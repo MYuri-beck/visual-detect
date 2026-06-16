@@ -1,0 +1,18 @@
+# Caminhos relativos à pasta "Reflexo vermelho.v3i.yolov11"
+train: train_augmented/images
+val: valid/images
+test: test/images
+
+# Número de classes
+nc: 2
+
+# Nomes das classes
+names: ['reflexo-alterado', 'reflexo-normal']
+
+# Informações do Roboflow (pode manter)
+roboflow:
+  workspace: anemia-max
+  project: reflexo-vermelho
+  version: 3
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/anemia-max/reflexo-vermelho/dataset/3

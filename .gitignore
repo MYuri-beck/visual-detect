@@ -1,0 +1,53 @@
+# ================================================
+# .gitignore — Visual Detect
+# ================================================
+
+# --- Modelos de ML (grandes e binários) ---
+models/
+*.pt
+*.onnx
+*.weights
+
+# --- Datasets de treinamento (dados, não código) ---
+training/datasets/
+
+# --- Dados de voluntários (privacidade) ---
+data/
+
+# --- Resultados gerados automaticamente ---
+runs/
+training/runs/
+analysis/results/
+capture/reflexo_gica/
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# --- Ambiente virtual ---
+.venv/
+venv/
+env/
+
+# --- IDEs e editores ---
+.vscode/
+.idea/
+*.code-workspace
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Logs e arquivos temporários ---
+*.log
+*.tmp

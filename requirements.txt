@@ -1,0 +1,25 @@
+# ================================================
+# requirements.txt — Visual Detect (Core)
+# PC/Windows + Raspberry Pi 4 (compartilhado)
+# ================================================
+
+# Detecção e treinamento YOLO
+ultralytics>=8.0.0
+
+# Visão computacional
+opencv-python>=4.8.0
+
+# Deep Learning (PyTorch)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Processamento de imagem e dados
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Grad-CAM (mapas de ativação)
+grad-cam
+
+# Análise e visualização
+matplotlib
+scikit-learn

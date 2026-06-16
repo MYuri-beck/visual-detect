@@ -1,0 +1,28 @@
+# ================================================
+# requirements_rpi.txt — Visual Detect (Raspberry Pi 4)
+# Instalar APÓS o requirements.txt principal:
+#   pip install -r requirements.txt
+#   pip install -r requirements_rpi.txt
+# ================================================
+
+# Câmera Raspberry Pi
+picamera2==0.3.31
+
+# Display / Hardware (luma para TFT/OLED se necessário)
+luma.core>=1.18.0
+luma.emulator==1.7.0
+
+# Comunicação serial (GPIO, sensores)
+pyserial==3.5
+
+# Interface gráfica / simulação
+pygame==2.6.1
+
+# ================================================
+# NOTA: As bibliotecas abaixo geralmente são
+# instaladas via apt-get no Raspberry Pi OS,
+# NÃO via pip:
+#   sudo apt install python3-gi python3-cairo
+# ================================================
+# PyGObject (via apt: python3-gi)
+# pycairo    (via apt: python3-cairo)
