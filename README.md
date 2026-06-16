@@ -23,6 +23,11 @@ VisualDetect/
 │   ├── image_processor.py
 │   └── archive/                     # Versões antigas do batch_processor
 │
+├── firmware/                        # Firmware embarcado (ESP32)
+│   ├── esp32_hid_controller/
+│   │   └── esp32_hid_controller.ino # Controlador HID USB (teclado físico)
+│   └── README.md                    # Pinagem, dependências e integração
+│
 ├── training/                        # Treinamento YOLO
 │   ├── treinamento_V3.1.py          # Script de treino (versão final)
 │   ├── data.yaml                    # Configuração do dataset
@@ -118,6 +123,19 @@ python analysis/validacao_cruzada_10fold_final.py
 ```bash
 # Configurar data.yaml e caminhos em training/treinamento_V3.1.py
 python training/treinamento_V3.1.py
+```
+
+---
+
+## Controle físico — ESP32 HID
+
+O ESP32 é conectado via USB ao Raspberry Pi 4 e se registra como **teclado HID**.
+Os botões físicos enviam teclas de seta e Enter para navegar na interface do `batch_processor.py`.
+
+Consulte [`firmware/README.md`](firmware/README.md) para esquema de pinos, dependências do Arduino IDE e instruções de gravação.
+
+```
+Botões físicos → ESP32 (USB HID) → Raspberry Pi 4 → batch_processor.py
 ```
 
 ---
