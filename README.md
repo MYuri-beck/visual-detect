@@ -1,74 +1,135 @@
-# VisualDetect - Retinoblastoma Detection using YOLO
+# VisualDetect — Detecção de Retinoblastoma com YOLO
 
-Projeto de detecção de Retinoblastoma usando YOLO (You Only Look Once) com YOLOv8.
+Sistema de visão computacional para detecção de sintomas de **Retinoblastoma** (reflexo pupilar anormal) utilizando modelos YOLOv8, com suporte a captura via webcam e processamento em lote no Raspberry Pi 4.
 
-## Descrição
-
-VisualDetect é um sistema de visão computacional que utiliza redes neurais YOLOv8 para detectar sintomas de Retinoblastoma em imagens de olhos.
+---
 
 ## Estrutura do Projeto
 
 ```
 VisualDetect/
-├── Main/                 # Aplicação principal
-│   ├── detection.py     # Script de detecção em webcam
-│   ├── batch_processor.py
+├── analysis/                        # Análise e validação
+│   ├── 10-Fold_cross_validation.py
+│   ├── validacao_cruzada_10fold_final.py
+│   ├── fold_10_only.py
+│   ├── analise_modelos.py
+│   ├── check_cuda.py
+│   └── archive/                     # Scripts antigos (referência)
+│
+├── capture/                         # Captura e processamento de imagens
+│   ├── batch_processor.py           # Script principal (Raspberry Pi 4)
 │   ├── capture_webcam.py
-│   ├── GC9A01_simu.py   # Simulação de tela
-│   ├── videos/
-│   └── capturas/
-├── augment_yolo.py      # Augmentação de dados
-├── name_ organizes.py
-└── requirements.txt
+│   ├── detection.py
+│   ├── image_processor.py
+│   └── archive/                     # Versões antigas do batch_processor
+│
+├── training/                        # Treinamento YOLO
+│   ├── treinamento_V3.1.py          # Script de treino (versão final)
+│   ├── data.yaml                    # Configuração do dataset
+│   ├── datasets/                    # Train/valid/test (não versionado)
+│   ├── runs/                        # Resultados de treino (não versionado)
+│   └── archive/                     # Versões antigas dos scripts de treino
+│
+├── models/                          # Modelos .pt (não versionado)
+├── scripts/                         # Scripts utilitários
+│   ├── augment_yolo.py              # Augmentação de dados
+│   └── name_ organizes.py
+│
+├── data/                            # Capturas de voluntários (não versionado)
+├── requirements.txt                 # Dependências core (PC + RPi4)
+├── requirements_rpi.txt             # Dependências exclusivas do Raspberry Pi 4
+└── .gitignore
 ```
+
+> **Nota:** As pastas `models/`, `training/datasets/`, `training/runs/` e `data/` não são versionadas (ver `.gitignore`).
+
+---
 
 ## Instalação
 
-1. Clone o repositório
-2. Crie um ambiente virtual:
+### 1. Clone o repositório
 ```bash
-python -m venv .venv
-.venv\Scripts\Activate.ps1  # No Windows
-source .venv/bin/activate   # No Linux/Mac
+git clone https://github.com/MYuri-beck/visual-detect.git
+cd visual-detect
 ```
 
-3. Instale as dependências:
+### 2. Crie e ative um ambiente virtual
+```bash
+python -m venv .venv
+
+# Windows
+.venv\Scripts\Activate.ps1
+
+# Linux / Raspberry Pi
+source .venv/bin/activate
+```
+
+### 3. Instale as dependências
+
+**PC / Windows:**
 ```bash
 pip install -r requirements.txt
 ```
 
-## Dependências
+**Raspberry Pi 4** (instalar após o core):
+```bash
+pip install -r requirements.txt
+pip install -r requirements_rpi.txt
+```
 
-- **ultralytics** - Framework YOLO
-- **opencv-python** - Processamento de imagem
-- **torch/torchvision** - Deep Learning
-- **Pillow** - Manipulação de imagens
-- **luma.core/luma.emulator** - Display emulation
-- **pygame** - Renderização
+---
+
+## Dependências Principais
+
+| Pacote | Uso |
+|---|---|
+| `ultralytics` | Framework YOLO (treino e inferência) |
+| `opencv-python` | Captura de câmera e processamento de imagem |
+| `torch` / `torchvision` | Deep Learning |
+| `Pillow` | Manipulação de imagens |
+| `scikit-learn` | Validação cruzada e métricas |
+| `picamera2` *(RPi4)* | Câmera do Raspberry Pi |
+
+---
 
 ## Uso
 
-### Detecção em Webcam
+### Captura e detecção em lote (Raspberry Pi 4)
 ```bash
-python Main/detection.py
+python capture/batch_processor.py
 ```
 
-### Processamento em Lote
+### Detecção em webcam
 ```bash
-python Main/batch_processor.py
+python capture/detection.py
 ```
 
-### Captura de Webcam
+### Captura via webcam
 ```bash
-python Main/capture_webcam.py
+python capture/capture_webcam.py
 ```
 
-## Nota Importante
+### Validação cruzada (10-Fold)
+```bash
+python analysis/validacao_cruzada_10fold_final.py
+```
 
-Os arquivos de treinamento (`trainings/`) e o dataset não estão inclusos no repositório. Para utilizar o projeto:
-- Coloque os modelos pré-treinados em `trainings/runs/detect/`
-- Atualize os caminhos em `detection.py` conforme necessário
+### Treinamento
+```bash
+# Configurar data.yaml e caminhos em training/treinamento_V3.1.py
+python training/treinamento_V3.1.py
+```
+
+---
+
+## Nota sobre Modelos e Dados
+
+- Os modelos treinados (`.pt`) devem ser colocados em `models/` e **não** são versionados.
+- O caminho do modelo em `capture/batch_processor.py` aponta para `../training/runs/detect/<NOME_DO_TREINO>/weights/best.pt` — ajuste `NOME_DO_TREINO` conforme o treino utilizado.
+- Os dados de voluntários em `data/` são mantidos localmente por questões de privacidade.
+
+---
 
 ## Licença
 
-Este projeto é de uso interno.
+Este projeto é de uso interno / acadêmico.

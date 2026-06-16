@@ -17,9 +17,6 @@ torchvision>=0.15.0
 numpy>=1.24.0
 Pillow>=10.0.0
 
-# Grad-CAM (mapas de ativação)
-grad-cam
-
 # Análise e visualização
 matplotlib
 scikit-learn
