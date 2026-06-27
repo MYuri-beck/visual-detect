@@ -3,8 +3,8 @@ import os
 from ultralytics import YOLO
 
 # 1. Configurações de Pastas e Modelo
-NOME_DO_TREINO = "treio_yolov8m_fenecit2" 
-MODELO_PATH = os.path.join("..", "trainings", "runs", "detect", NOME_DO_TREINO, "weights", "best.pt")
+NOME_DO_TREINO = "Treino_5k__Dropout025_m" 
+MODELO_PATH = os.path.join("..", "training", "runs", "detect", NOME_DO_TREINO, "weights", "best.pt")
 pasta_sobrevivente = "reflexo_gica"
 pasta_resultados = "resultados_sobrevivente"
 

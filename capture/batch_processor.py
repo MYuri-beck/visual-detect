@@ -6,12 +6,12 @@ from datetime import datetime #
 
 # ===== 1. CONFIGURAÇÃO =====
 image_number = 10
-total_time = 10
-capture_folder = "capturas"  # <--Pasta para as capturas
-analyzed_folder = "capturas_analisadas" # <--Pasta para os resultados
+total_time = 2
+capture_folder = "capturas_voluntarios_analisar"  # <--Pasta para as capturas
+analyzed_folder = "capturas_analisadas_voluntarios" # <--Pasta para os resultados
 
 # --- CONFIGURAÇÃO DO MODELO ---
-NOME_DO_TREINO = "treino_300_dropout_m" # <-- Confirmar este nome
+NOME_DO_TREINO = "Treino_5k__Dropout025_m" # <-- Confirmar este nome
 MODELO_PATH = os.path.join("..", "training", "runs", "detect", NOME_DO_TREINO, "weights", "best.pt")
 
 # --- Cálculo do intervalo ---
@@ -35,7 +35,7 @@ except Exception as e:
     exit()
 
 # --- Inicialização da Webcam ---
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 if not cap.isOpened():
     print("Erro: Não foi possível abrir a webcam.")
     exit()
@@ -95,7 +95,9 @@ try:
             
             frame = cv2.flip(frame, 1)
             
-           
+            # --- CORREÇÃO (ADICIONADA A ROTAÇÃO QUE FALTAVA) ---
+            ##frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            
             cv2.imshow("Feed da webcam -- Prima 's' para iniciar", frame)
 
             current_time = time.time()
@@ -127,3 +129,52 @@ finally:
     print("\nEncerrando e limpando recursos da câmera...")
     cap.release()
     cv2.destroyAllWindows()
+
+
+# --- FASE 3: ANÁLISE "OFFLINE" DAS IMAGENS ---
+if lista_de_imagens_capturadas:
+    print(f"\n--- FASE 2: Iniciando análise de {len(lista_de_imagens_capturadas)} imagens... ---")
+    
+    for caminho_imagem, base_filename in lista_de_imagens_capturadas:
+        print(f"\nAnalisando: {caminho_imagem}")
+        
+        # 1. MARCA O INÍCIO
+        tempo_inicio = time.time()
+
+        try:
+            results = model.predict(caminho_imagem, device="cpu", verbose=False)
+            result = results[0]
+
+            # --- SALVAR A IMAGEM ANALISADA ---
+            imagem_analisada = result.plot()
+            
+            caminho_salvar_analise = os.path.join(analyzed_folder, f"analyzed_{base_filename}")
+            
+            cv2.imwrite(caminho_salvar_analise, imagem_analisada)
+            
+            # 2. MARCA O FIM E CALCULA
+            tempo_fim = time.time()
+            tempo_total = tempo_fim - tempo_inicio
+            
+            print(f" -> Imagem analisada salva em: {caminho_salvar_analise}")
+            
+            # 3. MOSTRA APENAS EM SEGUNDOS
+            print(f" ⏱️ Tempo de processamento: {tempo_total:.4f} segundos")
+
+            # --- Impressão dos resultados no terminal ---
+            if len(result.boxes) == 0:
+                print(" -> Nenhuma detecção encontrada.")
+            else:
+                print(" -> Detecções:")
+                for box in result.boxes:
+                    label = model.names[int(box.cls[0])]
+                    confianca = float(box.conf[0])
+                    print(f"    - {label.upper()} (Confiança: {confianca*100:.1f}%)")
+
+        except Exception as e:
+            print(f" -> Erro ao analisar a imagem {caminho_imagem}: {e}")
+
+    print("\n--- Análise concluída. ---")
+
+else:
+    print("\nNenhuma imagem foi capturada para analisar.")

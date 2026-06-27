@@ -15,8 +15,9 @@ luma.emulator==1.7.0
 # Comunicação serial (GPIO, sensores)
 pyserial==3.5
 
-# Interface gráfica / simulação
+# Interface gráfica
 pygame==2.6.1
+customtkinter>=5.2.0
 
 # ================================================
 # NOTA: As bibliotecas abaixo geralmente são
