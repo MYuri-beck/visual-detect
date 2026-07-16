@@ -1,0 +1,63 @@
+# =============================================================================
+# visualdetect.service — Serviço systemd do VisualDetect
+# =============================================================================
+# Este arquivo registra o VisualDetect como serviço do sistema.
+# O app inicia automaticamente ao ligar o Raspberry Pi.
+#
+# INSTALAÇÃO MANUAL (se não usar install_rpi.sh):
+#   sudo cp raspberry-pi/visualdetect.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable visualdetect
+#   sudo reboot
+#
+# COMANDOS ÚTEIS:
+#   sudo systemctl start visualdetect     # iniciar agora
+#   sudo systemctl stop visualdetect      # parar
+#   sudo systemctl restart visualdetect   # reiniciar
+#   sudo systemctl status visualdetect    # ver status
+#   journalctl -u visualdetect -f         # ver logs em tempo real
+# =============================================================================
+
+[Unit]
+Description=VisualDetect — Detecção de Retinoblastoma
+# Inicia apenas depois que a interface gráfica estiver pronta
+After=graphical.target
+Wants=graphical.target
+
+[Service]
+# --- Usuário que vai executar o app ---
+# Se seu usuário não for 'pi', mude aqui (ex: User=yurim)
+User=pi
+Group=pi
+
+# --- Diretório de trabalho ---
+# IMPORTANTE: Mude este caminho para onde você clonou o projeto
+WorkingDirectory=/home/pi/VisualDetect
+
+# --- Variáveis de ambiente ---
+# DISPLAY=:0 é necessário para abrir a janela gráfica na tela conectada ao HDMI
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+# Desativa warnings desnecessários do OpenCV
+Environment=OPENCV_LOG_LEVEL=ERROR
+
+# --- Comando para iniciar o app ---
+# --fullscreen faz o app abrir em tela cheia (modo hardware dedicado)
+ExecStart=/home/pi/VisualDetect/.venv/bin/python /home/pi/VisualDetect/app/main.py --fullscreen
+
+# --- Comportamento em caso de falha ---
+# Reinicia automaticamente se o app travar ou fechar com erro
+Restart=on-failure
+RestartSec=5s
+
+# --- Tempo máximo para iniciar ---
+TimeoutStartSec=60
+
+# --- Saída de log ---
+# Os logs ficam disponíveis via: journalctl -u visualdetect -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+# graphical.target = inicia quando o ambiente gráfico (desktop) estiver pronto
+WantedBy=graphical.target
