@@ -1,7 +1,7 @@
 # Firmware — ESP32 HID Controller
 
 Firmware para **ESP32-S2/S3** (com USB nativo) que emula um teclado HID via USB.
-Permite controlar a interface do `batch_processor.py` no Raspberry Pi 4 através de botões físicos.
+Permite controlar a interface do `app/main.py` no Raspberry Pi 4 através de botões físicos.
 
 ---
 
@@ -58,10 +58,10 @@ https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32
 
 ---
 
-## Integração com o batch_processor.py
+## Integração com o app/main.py
 
 O ESP32 se registra no Raspberry Pi 4 como um **teclado USB padrão** (HID).  
-O `batch_processor.py` pode capturar os eventos de teclado normalmente (ex.: com `curses`, `keyboard`, ou `pynput`).
+A interface `app/ui.py` captura os eventos de teclado via bindings do tkinter (`<Left>`, `<Right>`, `<Up>`, `<Down>`, `<Return>`).
 
 ```
 ESP32 (botões físicos)
@@ -71,5 +71,5 @@ ESP32 (botões físicos)
 Raspberry Pi 4
     │
     ▼
-batch_processor.py  (captura eventos de teclado)
+app/main.py → app/ui.py  (captura eventos de teclado via tkinter)
 ```

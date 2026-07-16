@@ -1,6 +1,7 @@
-# VisualDetect — Guia Completo para Raspberry Pi
+# VisualDetect — Guia de Instalação no Raspberry Pi
 
-> Hardware dedicado para detecção de Retinoblastoma via reflexo pupilar.
+> Guia para desenvolvedores e técnicos configurarem o hardware dedicado.
+> Para o guia do usuário final (médico), consulte [`docs/user_guide/GUIA_DO_USUARIO.md`](../user_guide/GUIA_DO_USUARIO.md).
 
 ---
 
@@ -234,7 +235,7 @@ source .venv/bin/activate
 pip install --upgrade pip
 
 # 5. Instalar dependências Python
-pip install -r requirements.txt
+pip install -r requirements_pc.txt
 pip install -r requirements_rpi.txt
 
 # 6. Testar se funciona
@@ -251,22 +252,26 @@ O modelo treinado (arquivo `.pt`) é o "cérebro" do sistema — ele não é ver
 
 ```
 VisualDetect/
-└── models/
-    └── best.pt   ← coloque seu modelo aqui com EXATAMENTE este nome
+└── app/
+    └── models/
+        └── best.pt   ← coloque seu modelo aqui com EXATAMENTE este nome
 ```
+
+> **Nota:** O modelo fica dentro de `app/models/` pois a pasta `app/` é autocontida —
+> é ela que vai para o Raspberry Pi.
 
 ### Como transferir o modelo para o Raspberry Pi
 
 **Opção A — Pendrive USB:**
 ```bash
 # No Raspberry Pi, com o pendrive inserido:
-cp /media/pi/<nome-do-pendrive>/best.pt /home/pi/VisualDetect/models/best.pt
+cp /media/pi/<nome-do-pendrive>/best.pt /home/pi/VisualDetect/app/models/best.pt
 ```
 
 **Opção B — SCP (transferir pelo Wi-Fi):**
 ```bash
 # No seu computador Windows (PowerShell):
-scp C:\caminho\para\best.pt pi@visualdetect.local:/home/pi/VisualDetect/models/best.pt
+scp C:\caminho\para\best.pt pi@visualdetect.local:/home/pi/VisualDetect/app/models/best.pt
 
 # Explicação:
 # scp = "secure copy" — copia arquivos pela rede com segurança
@@ -276,13 +281,13 @@ scp C:\caminho\para\best.pt pi@visualdetect.local:/home/pi/VisualDetect/models/b
 **Opção C — Google Drive / WeTransfer:**
 ```bash
 # No Raspberry Pi com o link de download direto:
-wget -O /home/pi/VisualDetect/models/best.pt "URL_DO_DOWNLOAD"
+wget -O /home/pi/VisualDetect/app/models/best.pt "URL_DO_DOWNLOAD"
 ```
 
 ### Verificar se o modelo está no lugar certo
 
 ```bash
-ls -lh /home/pi/VisualDetect/models/
+ls -lh /home/pi/VisualDetect/app/models/
 # Deve aparecer: best.pt  (com tamanho em MB)
 ```
 
@@ -489,7 +494,7 @@ ssh pi@192.168.1.XXX
 journalctl -u visualdetect -n 30
 
 # Verificar se o modelo existe
-ls -lh /home/pi/VisualDetect/models/best.pt
+ls -lh /home/pi/VisualDetect/app/models/best.pt
 
 # Testar manualmente (desliga o serviço primeiro)
 sudo systemctl stop visualdetect
@@ -515,11 +520,11 @@ python3 -c "import cv2; cap=cv2.VideoCapture(0); print('Câmera OK' if cap.isOpe
 
 ```bash
 # Confirme o caminho do modelo
-ls -lh /home/pi/VisualDetect/models/
+ls -lh /home/pi/VisualDetect/app/models/
 
 # O arquivo deve se chamar exatamente: best.pt
 # Se o nome for diferente, renomeie:
-mv /home/pi/VisualDetect/models/seu_modelo.pt /home/pi/VisualDetect/models/best.pt
+mv /home/pi/VisualDetect/app/models/seu_modelo.pt /home/pi/VisualDetect/app/models/best.pt
 ```
 
 ### App fica lento / travando
@@ -553,27 +558,29 @@ sudo systemctl restart visualdetect
 
 ---
 
-## Estrutura do projeto na branch raspberry-pi
+## Estrutura do projeto
 
 ```
 VisualDetect/
-├── app/
-│   ├── main.py          ← ponto de entrada; configure parâmetros aqui
-│   ├── backend.py       ← lógica de câmera, YOLO e sessão de captura
-│   └── ui.py            ← interface gráfica
+├── app/                                  ← pasta autocontida (deploy no Raspberry Pi)
+│   ├── main.py                           ← ponto de entrada; configure parâmetros aqui
+│   ├── backend.py                        ← lógica de câmera, YOLO e sessão de captura
+│   ├── ui.py                             ← interface gráfica
+│   ├── assets/                           ← logos da interface
+│   ├── models/
+│   │   └── best.pt                       ← coloque seu modelo aqui (não versionado)
+│   ├── capturas_voluntarios_analisar/    ← criada automaticamente ao rodar
+│   └── capturas_analisadas_voluntarios/  ← criada automaticamente ao rodar
 │
-├── models/
-│   └── best.pt          ← coloque seu modelo aqui (não versionado)
+├── docs/
+│   ├── dev/
+│   │   ├── INSTALL_RASPBERRY.md   ← este arquivo
+│   │   ├── install_rpi.sh         ← script de instalação automática
+│   │   └── visualdetect.service   ← serviço systemd para autostart
+│   └── user_guide/
+│       └── GUIA_DO_USUARIO.md     ← guia para o médico
 │
-├── raspberry-pi/        ← pasta desta branch
-│   ├── README_RASPBERRY_PI.md   ← este arquivo
-│   ├── install_rpi.sh           ← script de instalação automática
-│   └── visualdetect.service     ← serviço systemd para autostart
-│
-├── capturas_voluntarios_analisar/    ← criada automaticamente ao rodar
-├── capturas_analisadas_voluntarios/  ← criada automaticamente ao rodar
-│
-├── requirements.txt        ← dependências Python principais
+├── requirements_pc.txt     ← dependências Python para PC
 └── requirements_rpi.txt    ← dependências extras do Raspberry Pi
 ```
 

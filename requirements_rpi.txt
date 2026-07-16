@@ -5,24 +5,19 @@
 #   pip install -r requirements_rpi.txt
 # ================================================
 
-# Câmera Raspberry Pi
-picamera2==0.3.31
+# Câmera Raspberry Pi (módulo CSI)
+# Nota: picamera2 é instalada preferencialmente via apt no Raspberry Pi OS:
+#   sudo apt install python3-picamera2
+# A linha abaixo serve como fallback via pip (pode não funcionar em todos os sistemas):
+# picamera2==0.3.31
 
-# Display / Hardware (luma para TFT/OLED se necessário)
-luma.core>=1.18.0
-luma.emulator==1.7.0
-
-# Comunicação serial (GPIO, sensores)
+# Comunicação serial (ESP32 via USB)
 pyserial==3.5
 
-# Interface gráfica / simulação
-pygame==2.6.1
-
 # ================================================
-# NOTA: As bibliotecas abaixo geralmente são
-# instaladas via apt-get no Raspberry Pi OS,
-# NÃO via pip:
-#   sudo apt install python3-gi python3-cairo
+# NOTA: As bibliotecas abaixo são instaladas via
+# apt-get no Raspberry Pi OS, NÃO via pip:
+#   sudo apt install python3-gi python3-cairo python3-picamera2
 # ================================================
 # PyGObject (via apt: python3-gi)
 # pycairo    (via apt: python3-cairo)

@@ -20,22 +20,22 @@ from backend import CameraManager, VisionAnalyzer, CaptureSession
 # CONFIGURACAO — ajuste aqui antes de rodar no Raspberry Pi
 # ============================================================================
 
-# Raiz do projeto: sempre aponta para VisualDetect/, independente de onde
-# o script é chamado (ex: python app/main.py  ou  cd app && python main.py)
-_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+# Diretorio da pasta app/ — tudo fica aqui dentro para facilitar o deploy
+# no Raspberry Pi: copie apenas a pasta app/ e ela ja funciona sozinha.
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Caminho para o modelo YOLO treinado.
 # PARA ALTERAR o modelo: substitua 'best.pt' pelo nome do seu arquivo .pt
-# Coloque o arquivo em: VisualDetect/models/best.pt
-MODELO_PATH = os.path.join(_ROOT, "models", "best.pt")
+# Coloque o arquivo em: app/models/best.pt
+MODELO_PATH = os.path.join(_APP_DIR, "models", "best.pt")
 
 # Pasta onde as imagens brutas capturadas sao salvas
-# PARA ALTERAR: mude o nome da pasta (fica sempre dentro de VisualDetect/)
-CAPTURE_FOLDER = os.path.join(_ROOT, "capturas_voluntarios_analisar")
+# PARA ALTERAR: mude o nome da pasta (fica sempre dentro de app/)
+CAPTURE_FOLDER = os.path.join(_APP_DIR, "capturas_voluntarios_analisar")
 
 # Pasta onde as imagens com anotacoes YOLO sao salvas apos a analise
 # PARA ALTERAR: mude o nome da pasta
-ANALYZED_FOLDER = os.path.join(_ROOT, "capturas_analisadas_voluntarios")
+ANALYZED_FOLDER = os.path.join(_APP_DIR, "capturas_analisadas_voluntarios")
 
 
 # ============================================================================
