@@ -84,7 +84,12 @@ echo -e "${YELLOW}[4/5] Instalando bibliotecas Python...${NC}"
 # Atualiza o pip primeiro
 pip install --upgrade pip
 
-# Instala dependências principais
+# Instala PyTorch CPU-only ANTES do requirements_pc.txt
+# (sem isso o pip baixa a versão com CUDA ~2 GB, que não funciona no Raspberry Pi)
+echo "  Instalando PyTorch CPU-only (versão leve para Raspberry Pi)..."
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Instala o restante das dependências principais
 echo "  Instalando requirements_pc.txt..."
 pip install -r requirements_pc.txt
 
