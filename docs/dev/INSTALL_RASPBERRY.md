@@ -220,8 +220,8 @@ Se quiser entender o que acontece por baixo:
 ```bash
 # 1. Instalar dependências do sistema
 sudo apt-get install -y python3-pip python3-venv python3-tk python3-dev \
-    libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev \
-    libatlas-base-dev libjpeg-dev libopenblas-dev v4l-utils git
+    libgl1 libgl1-mesa-dri libglib2.0-0t64 libsm6 libxext6 libxrender-dev \
+    libjpeg-dev libopenblas-dev v4l-utils git
 
 # 2. Criar ambiente virtual
 python3 -m venv .venv

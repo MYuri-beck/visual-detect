@@ -4,7 +4,7 @@
 # =============================================================================
 # Execute este script UMA VEZ após clonar o repositório:
 #
-#   bash raspberry-pi/install_rpi.sh
+#   bash docs/dev/install_rpi.sh
 #
 # O script vai:
 #   1. Atualizar o sistema
@@ -23,8 +23,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # Sem cor
 
-# --- Diretório raiz do projeto (onde este script está sendo executado) ---
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# --- Diretório raiz do projeto ---
+# O script está em docs/dev/, então sobe dois níveis (docs/dev → docs → raiz)
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 echo -e "${BLUE}=================================================${NC}"
 echo -e "${BLUE}   VisualDetect — Instalação Raspberry Pi${NC}"
 echo -e "${BLUE}=================================================${NC}"
@@ -46,12 +47,12 @@ sudo apt-get install -y \
     python3-venv \
     python3-tk \
     python3-dev \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
+    libgl1 \
+    libgl1-mesa-dri \
+    libglib2.0-0t64 \
     libsm6 \
     libxext6 \
     libxrender-dev \
-    libatlas-base-dev \
     libjpeg-dev \
     libopenblas-dev \
     v4l-utils \
