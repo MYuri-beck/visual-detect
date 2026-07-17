@@ -84,8 +84,8 @@ echo -e "${YELLOW}[4/5] Instalando bibliotecas Python...${NC}"
 pip install --upgrade pip
 
 # Instala dependências principais
-echo "  Instalando requirements.txt..."
-pip install -r requirements.txt
+echo "  Instalando requirements_pc.txt..."
+pip install -r requirements_pc.txt
 
 # Instala dependências específicas do Raspberry Pi
 echo "  Instalando requirements_rpi.txt..."
@@ -99,7 +99,7 @@ echo -e "${GREEN}  ✓ Bibliotecas Python instaladas.${NC}"
 echo -e "${YELLOW}[5/5] Configurando autostart (systemd)...${NC}"
 
 # Substitui o caminho do projeto no arquivo de serviço
-SERVICE_TEMPLATE="$PROJECT_DIR/raspberry-pi/visualdetect.service"
+SERVICE_TEMPLATE="$PROJECT_DIR/docs/dev/visualdetect.service"
 SERVICE_DEST="/etc/systemd/system/visualdetect.service"
 SERVICE_TEMP="/tmp/visualdetect.service"
 
@@ -124,7 +124,7 @@ echo -e "${GREEN}  INSTALAÇÃO CONCLUÍDA COM SUCESSO!${NC}"
 echo -e "${BLUE}=================================================${NC}"
 echo ""
 echo -e "Próximos passos:"
-echo -e "  1. Coloque seu modelo em: ${YELLOW}${PROJECT_DIR}/models/best.pt${NC}"
+echo -e "  1. Coloque seu modelo em: ${YELLOW}${PROJECT_DIR}/app/models/best.pt${NC}"
 echo -e "  2. Reinicie o Raspberry Pi: ${YELLOW}sudo reboot${NC}"
 echo -e "  3. O app iniciará automaticamente."
 echo ""

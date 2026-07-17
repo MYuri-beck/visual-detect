@@ -5,7 +5,7 @@
 # O app inicia automaticamente ao ligar o Raspberry Pi.
 #
 # INSTALAÇÃO MANUAL (se não usar install_rpi.sh):
-#   sudo cp raspberry-pi/visualdetect.service /etc/systemd/system/
+#   sudo cp docs/dev/visualdetect.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable visualdetect
 #   sudo reboot

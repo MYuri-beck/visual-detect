@@ -191,11 +191,10 @@ sudo raspi-config
 # Navegue até onde quer instalar o projeto (ex: pasta home do usuário pi)
 cd /home/pi
 
-# Clone o repositório (a branch raspberry-pi especificamente)
-git clone -b raspberry-pi https://github.com/MYuri-beck/visual-detect.git VisualDetect
+# Clone o repositório
+git clone https://github.com/MYuri-beck/visual-detect.git VisualDetect
 
-# Explicação dos parâmetros:
-# -b raspberry-pi  → clona já na branch correta
+# Explicação do parâmetro:
 # VisualDetect     → nome da pasta que será criada
 ```
 
@@ -208,7 +207,7 @@ cd VisualDetect
 ### Passo 3 — Rodar o script de instalação automática
 
 ```bash
-bash raspberry-pi/install_rpi.sh
+bash docs/dev/install_rpi.sh
 ```
 
 > O script cuida de tudo: dependências, ambiente virtual e autostart.
@@ -312,7 +311,7 @@ nano /home/pi/VisualDetect/app/main.py
 | `ANALYZED_FOLDER` | `app/main.py` linha ~43 | `capturas_analisadas_voluntarios` | Pasta onde as fotos com as marcações do YOLO são salvas. |
 | `image_number` | `app/backend.py` linha ~225 | `10` | Quantas fotos são tiradas por exame. Mais fotos = mais dados, mas exame mais lento. |
 | `total_time` | `app/backend.py` linha ~226 | `10` | Duração total do exame em segundos. Ex: 10 fotos em 10s = 1 foto/segundo. |
-| `index` da câmera | `app/main.py` → `camera.start(0)` | `0` | Qual câmera usar. `0` = primeira câmera detectada. Se tiver duas câmeras, tente `1`. |
+| `index` da câmera | `app/backend.py` → `CameraManager.start(index)` | `0` | Qual câmera usar. `0` = primeira câmera detectada. Se tiver duas câmeras, tente `1`. |
 | `--fullscreen` | linha de comando | desativado | Abre a janela em tela cheia. Essencial para hardware dedicado. |
 
 ### Exemplos de ajuste
@@ -340,6 +339,7 @@ ANALYZED_FOLDER = "exames/fotos_analisadas"
 **Usar uma câmera diferente (segunda câmera USB):**
 ```python
 # Em app/main.py:
+camera = CameraManager()
 camera.start(1)  # índice 1 = segunda câmera
 ```
 
@@ -366,7 +366,7 @@ sudo reboot
 #### Passo 1 — Editar o arquivo de serviço
 
 ```bash
-nano /home/pi/VisualDetect/raspberry-pi/visualdetect.service
+nano /home/pi/VisualDetect/docs/dev/visualdetect.service
 ```
 
 Localize as linhas com `/home/pi/VisualDetect` e confirme que o caminho está correto para onde você clonou o projeto.
@@ -374,7 +374,7 @@ Localize as linhas com `/home/pi/VisualDetect` e confirme que o caminho está co
 #### Passo 2 — Copiar o arquivo para o systemd
 
 ```bash
-sudo cp /home/pi/VisualDetect/raspberry-pi/visualdetect.service /etc/systemd/system/
+sudo cp /home/pi/VisualDetect/docs/dev/visualdetect.service /etc/systemd/system/
 
 # Explicação:
 # sudo = executa como administrador (root)
@@ -575,12 +575,13 @@ VisualDetect/
 ├── docs/
 │   ├── dev/
 │   │   ├── INSTALL_RASPBERRY.md   ← este arquivo
+│   │   ├── INSTALL_PC.md          ← guia para Windows
 │   │   ├── install_rpi.sh         ← script de instalação automática
 │   │   └── visualdetect.service   ← serviço systemd para autostart
 │   └── user_guide/
 │       └── GUIA_DO_USUARIO.md     ← guia para o médico
 │
-├── requirements_pc.txt     ← dependências Python para PC
+├── requirements_pc.txt     ← dependências Python para PC e Raspberry Pi
 └── requirements_rpi.txt    ← dependências extras do Raspberry Pi
 ```
 
