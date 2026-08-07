@@ -15,6 +15,7 @@ import cv2
 import time
 import threading
 from datetime import datetime
+import json
 
 
 # ============================================================================
@@ -68,8 +69,11 @@ class CameraManager:
 
     # --- controle ---
 
-    def start(self, index=0):
+    def start(self, index=1):
         """Abre a câmera e inicia a thread de captura contínua."""
+        # Guard: se já estiver rodando, não abre uma segunda instância
+        if self._running and self._cap is not None and self._cap.isOpened():
+            return True
         if not CV2_AVAILABLE:
             return False
         try:
@@ -229,32 +233,46 @@ class CaptureSession:
         self.captured_images: list = []  # lista de (caminho_completo, nome_do_arquivo)
         self.session_ts = ""             # timestamp único por exame (formato YYYYMMDD_HHMMSS)
 
+        # Callbacks de progresso de análise — definidos dinamicamente pela tela T4b
+        # Permitem que T4b receba atualizações da thread de análise YOLO
+        self._ui_analyze_progress_cb = None  # callable(idx, total, fname)
+        self._ui_analyze_finish_cb   = None  # callable(captured_images)
+
+        # Pasta do último exame analisado (para referência da galeria)
+        self.last_analyzed_folder: str = ""
+
         # Cria as pastas se ainda não existirem
         os.makedirs(self.CAPTURE_FOLDER, exist_ok=True)
         os.makedirs(self.ANALYZED_FOLDER, exist_ok=True)
 
     # --- exame ---
 
-    def start_exam(self, on_finish_callback=None, on_progress_callback=None):
+    def start_exam(self, on_finish_callback=None, on_progress_callback=None,
+                   on_capture_done_callback=None):
         """
         Inicia a captura em background.
 
         Parâmetros
         ----------
-        on_finish_callback   : callable(captured_images) — chamado ao final do exame
-        on_progress_callback : callable(captured, total)  — chamado a cada foto tirada
+        on_finish_callback       : callable(captured_images) — chamado ao final da análise YOLO
+        on_progress_callback     : callable(captured, total)  — chamado a cada foto tirada
+        on_capture_done_callback : callable(captured_images) — chamado quando todas as fotos
+                                   foram tiradas, ANTES da análise YOLO começar. Usado pela
+                                   UI para trocar para a tela T4b antes do processamento.
         """
         self.session_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.captured_images = []
+        self._ui_analyze_progress_cb = None      # T4b registra ao ser exibida
+        self._ui_analyze_finish_cb   = on_finish_callback  # fallback; T4b pode sobrescrever
 
         thread = threading.Thread(
             target=self._capture_loop,
-            args=(on_finish_callback, on_progress_callback),
+            args=(on_progress_callback, on_capture_done_callback),
             daemon=True,
         )
         thread.start()
 
-    def _capture_loop(self, on_finish, on_progress):
+    def _capture_loop(self, on_progress, on_capture_done):
         """Loop de captura que roda em thread separada."""
         interval = self.total_time / max(self.image_number, 1)
         captured = 0
@@ -282,22 +300,119 @@ class CaptureSession:
 
         print("[Sessao] Captura concluida.")
 
-        # Análise YOLO roda aqui, antes de chamar o callback final
+        # Sinaliza que a captura terminou — a UI troca para T4b
+        if on_capture_done:
+            on_capture_done(self.captured_images)
+
+        # Aguarda a UI trocar para T4b e registrar os callbacks de análise.
+        # 400 ms e mais que suficiente para o tkinter processar a troca de tela.
+        time.sleep(0.4)
+
+        # Análise YOLO roda com a T4b já ativa para receber os callbacks
         if self.analyzer.available and self.captured_images:
             self._analyze_all()
 
-        if on_finish:
-            on_finish(self.captured_images)
+        # Notifica conclusão (T4b pode ter sobrescrito _ui_analyze_finish_cb)
+        if self._ui_analyze_finish_cb:
+            self._ui_analyze_finish_cb(self.captured_images)
 
     def _analyze_all(self):
-        """Analisa todas as imagens da sessão e salva os resultados anotados."""
-        print(f"\n--- Analise YOLO: {len(self.captured_images)} imagens ---")
-        for fpath, fname in self.captured_images:
-            out_path = os.path.join(self.ANALYZED_FOLDER, f"analyzed_{fname}")
+        """
+        Analisa todas as imagens da sessão, salva os resultados em subpasta
+        organizada por exame e grava um detections.json com as detecções.
+        Subpasta: ANALYZED_FOLDER / "Exame DD-MM-YY - HH:MM" / "Analise NN.jpg"
+        """
+        total = len(self.captured_images)
+        print(f"\n--- Analise YOLO: {total} imagens ---")
+
+        # Cria subpasta com nome legível para a galeria
+        exam_dt   = datetime.strptime(self.session_ts, "%Y%m%d_%H%M%S")
+        exam_name = exam_dt.strftime("Exame %d-%m-%y - %H-%M")
+        exam_folder = os.path.join(self.ANALYZED_FOLDER, exam_name)
+        os.makedirs(exam_folder, exist_ok=True)
+        self.last_analyzed_folder = exam_folder
+
+        detections_map: dict = {}
+
+        for i, (fpath, fname) in enumerate(self.captured_images):
+            out_name = f"Analise {i + 1:02d}.jpg"
+            out_path = os.path.join(exam_folder, out_name)
             detections = self.analyzer.analyze_file(fpath, out_path)
+
+            detections_map[out_name] = [
+                {"label": label, "conf": round(float(conf), 4)}
+                for label, conf in detections
+            ]
+
             if not detections:
-                print(f"  {fname}: nenhuma deteccao")
+                print(f"  {out_name}: nenhuma deteccao")
             else:
                 for label, conf in detections:
-                    print(f"  {fname}: {label.upper()} ({conf * 100:.1f}%)")
+                    print(f"  {out_name}: {label.upper()} ({conf * 100:.1f}%)")
+
+            # Notifica a tela T4b do progresso (callback registrado dinamicamente)
+            if self._ui_analyze_progress_cb:
+                self._ui_analyze_progress_cb(i + 1, total, out_name)
+
+        # Salva detecções como JSON para uso na galeria
+        json_path = os.path.join(exam_folder, "detections.json")
+        try:
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(detections_map, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[AVISO] Falha ao salvar detections.json: {e}")
+
         print("--- Analise concluida. ---\n")
+
+    def get_exam_gallery(self) -> list:
+        """
+        Lê a pasta de exames analisados e retorna a estrutura de galeria.
+
+        Retorna lista de dicts (mais recente primeiro):
+          name       : nome da pasta  (ex: "Exame 03-08-26 - 14:35")
+          folder     : caminho absoluto da pasta
+          images     : lista de caminhos absolutos dos .jpg (ordenada)
+          detections : dict {"Analise NN.jpg": [{"label": ..., "conf": ...}]}
+        """
+        result: list = []
+        if not os.path.exists(self.ANALYZED_FOLDER):
+            return result
+
+        try:
+            entries = sorted(os.listdir(self.ANALYZED_FOLDER), reverse=True)
+        except Exception:
+            return result
+
+        for entry in entries:
+            folder_path = os.path.join(self.ANALYZED_FOLDER, entry)
+            if not os.path.isdir(folder_path) or not entry.startswith("Exame "):
+                continue
+
+            try:
+                images = sorted([
+                    os.path.join(folder_path, f)
+                    for f in os.listdir(folder_path)
+                    if f.lower().endswith((".jpg", ".jpeg", ".png"))
+                    and f.startswith("Analise")
+                ])
+            except Exception:
+                images = []
+
+            detections: dict = {}
+            json_path = os.path.join(folder_path, "detections.json")
+            if os.path.exists(json_path):
+                try:
+                    with open(json_path, "r", encoding="utf-8") as f:
+                        detections = json.load(f)
+                except Exception:
+                    pass
+
+            if images:
+                result.append({
+                    "name":       entry,
+                    "folder":     folder_path,
+                    "images":     images,
+                    "detections": detections,
+                })
+
+        return result

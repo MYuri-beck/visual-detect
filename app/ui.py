@@ -7,11 +7,13 @@ logica de camera ou YOLO vive aqui, tudo e delegado ao CaptureSession.
 Telas:
   Loading  Carregando modelo YOLO (avanca sozinha ao terminar)
   T0       Info SENAI/NUDEP
-  T1       Splash VisualDetect
+  T1       Splash VisualDetect (+ acesso a Galeria pela seta para baixo)
   T2       Configuracao (wizard — um campo por vez)
   T3       Revisao + Feed da camera
   T4       Capturando (automatico, botoes bloqueados)
-  T5       Exame concluido
+  T4b      Processando / Analisando (YOLO em background, camera parada)
+  T5       Exame concluido (+ opcoes: Novo Exame / Ver Galeria)
+  Galeria  Biblioteca de exames (3 niveis: exame -> analise -> imagem)
 
 Navegacao via ESP32 HID (<- -> up down ENTER) ou teclado comum.
 """
@@ -22,11 +24,18 @@ import tkinter as tk
 
 import customtkinter as ctk
 
-# cv2 e PIL sao opcionais — o feed de camera e desabilitado se nao estiverem
+# PIL e opcional — necessario para exibicao de imagens (camera e galeria)
+try:
+    from PIL import Image, ImageTk
+    _PIL_OK = True
+except ImportError:
+    _PIL_OK = False
+    Image = ImageTk = None  # type: ignore
+
+# cv2 e opcional — necessario para o feed de camera
 try:
     import cv2
-    from PIL import Image, ImageTk
-    _CV2_OK = True
+    _CV2_OK = _PIL_OK  # feed de camera so funciona com cv2 + PIL juntos
 except ImportError:
     _CV2_OK = False
 
@@ -201,31 +210,6 @@ class ScreenT0(BaseScreen):
         box = ctk.CTkFrame(self, fg_color=C["transparent"])
         box.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Caminho para a logo NUDEP — dentro de app/assets/
-        _nudep_png = os.path.join(
-            os.path.dirname(__file__),
-            "assets", "logo - NUDEP_branco_png.png",
-        )
-        # PARA ALTERAR o tamanho maximo da logo NUDEP: mude os dois numeros abaixo
-        img = self._load_ctk_image(_nudep_png, 260, 130)
-        if img:
-            ctk.CTkLabel(box, image=img, text="").pack(pady=(0, 24))
-        else:
-            ctk.CTkLabel(box, text="[ SENAI / NUDEP ]",
-                         font=ctk.CTkFont(size=18), text_color=C["muted"]).pack(pady=(0, 24))
-
-        ctk.CTkLabel(
-            box,
-            text="Centro de Formacao Profissional SENAI\nPlinio Gilberto Kroeff",
-            font=ctk.CTkFont(size=20, weight="bold"),
-            text_color=C["white"], justify="center",
-        ).pack(pady=(0, 10))
-
-        ctk.CTkLabel(
-            box, text="Curso Tecnico em Desenvolvimento de Sistemas",
-            font=ctk.CTkFont(size=15), text_color=C["text2"], justify="center",
-        ).pack(pady=(0, 25))
-
         ctk.CTkLabel(box, text="Autores:",
                      font=ctk.CTkFont(size=14), text_color=C["green"]).pack(pady=(0, 4))
         ctk.CTkLabel(box, text="Yuri Mendes  |  Andrei Krug",
@@ -248,7 +232,9 @@ class ScreenT1(BaseScreen):
 
     def __init__(self, app):
         super().__init__(app)
+        self.sel = 0  # 0 = INICIAR, 1 = GALERIA
         self._build()
+        self._style_buttons()
 
     def _build(self):
         # Card central com borda sutil
@@ -264,7 +250,7 @@ class ScreenT1(BaseScreen):
                      text_color=C["muted"]).place(relx=0.96, rely=0.05, anchor="ne")
 
         center = ctk.CTkFrame(card, fg_color=C["transparent"])
-        center.place(relx=0.5, rely=0.45, anchor="center")
+        center.place(relx=0.5, rely=0.44, anchor="center")
 
         # Caminho para a logo VisualDetect — dentro de app/assets/
         _vd_png = os.path.join(
@@ -286,23 +272,64 @@ class ScreenT1(BaseScreen):
                      text_color=C["white"]).pack(pady=(0, 6))
 
         ctk.CTkLabel(center, text="Equipamento de Triagem do Reflexo Ocular",
-                     font=ctk.CTkFont(size=14), text_color=C["text2"]).pack(pady=(0, 28))
+                     font=ctk.CTkFont(size=14), text_color=C["text2"]).pack(pady=(0, 22))
 
-        # Botao INICIAR decorativo — a navegacao e feita pelo teclado/HID
-        ctk.CTkButton(
+        # Botao INICIAR
+        self._btn_start = ctk.CTkButton(
             center, text="INICIAR",
             font=ctk.CTkFont(size=16, weight="bold"),
-            fg_color=C["green"], hover_color=C["green_dark"],
-            text_color=C["black"], corner_radius=20,
-            width=170, height=44, state="disabled",
-        ).pack(pady=(0, 8))
+            corner_radius=20, width=190, height=44,
+        )
+        self._btn_start.pack(pady=(0, 6))
 
-        ctk.CTkLabel(center, text="[ ENTER ]",
+        # Botao GALERIA (acessado com seta para baixo)
+        self._btn_gallery = ctk.CTkButton(
+            center, text="GALERIA",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            corner_radius=20, width=190, height=38,
+        )
+        self._btn_gallery.pack(pady=(0, 8))
+
+        ctk.CTkLabel(center, text="\u2191 \u2193  Selecionar      [ ENTER ]  Confirmar",
                      font=ctk.CTkFont(size=11), text_color=C["muted"]).pack()
 
+    def _style_buttons(self):
+        """Atualiza o estilo dos botoes conforme a selecao atual."""
+        if self.sel == 0:  # INICIAR ativo
+            self._btn_start.configure(
+                fg_color=C["green"], hover_color=C["green_dark"],
+                text_color=C["black"], border_width=0,
+            )
+            self._btn_gallery.configure(
+                fg_color=C["btn_off"], hover_color=C["btn_off"],
+                text_color=C["text2"], border_width=1,
+                border_color=C["btn_off_border"],
+            )
+        else:  # GALERIA ativo
+            self._btn_start.configure(
+                fg_color=C["btn_off"], hover_color=C["btn_off"],
+                text_color=C["text2"], border_width=1,
+                border_color=C["btn_off_border"],
+            )
+            self._btn_gallery.configure(
+                fg_color=C["purple"], hover_color=C["purple_light"],
+                text_color=C["white"], border_width=0,
+            )
+
     def handle_key(self, event):
-        if event.keysym == "Return":
-            self.app.show_screen("t2")
+        k = event.keysym
+        if k == "Up":
+            self.sel = 0
+            self._style_buttons()
+        elif k == "Down":
+            self.sel = 1
+            self._style_buttons()
+        elif k == "Return":
+            if self.sel == 0:
+                self.app.show_screen("t2")
+            else:
+                self.app._gallery_origin = "t1"
+                self.app.show_screen("galeria")
 
 
 # ============================================================================
@@ -447,6 +474,9 @@ class ScreenT3(BaseScreen):
     def __init__(self, app):
         super().__init__(app)
         self.sel = 1  # 0 = VOLTAR, 1 = INICIAR (padrao)
+        # Reinicia a camera caso tenha sido parada durante a analise YOLO
+        if not self.session.camera.available:
+            self.session.camera.start()
         self._build()
         self._style_buttons()
         if _CV2_OK:
@@ -692,21 +722,29 @@ class ScreenT4(BaseScreen):
         self._pulse()
         self._tick()
 
-        # Inicia o backend em background com callbacks para atualizar a UI
+        # Inicia o backend com callback de progresso e de conclusao da captura.
+        # on_capture_done_callback sinaliza que as fotos acabaram e e hora de
+        # ir para T4b (analise YOLO). on_finish nao e usado aqui.
         self.session.start_exam(
-            on_finish_callback=self._on_finish,
             on_progress_callback=self._on_progress,
+            on_capture_done_callback=lambda imgs: self.after(0, self._go_to_t4b),
         )
 
     # --- callbacks vindos da thread do backend ---
 
     def _on_progress(self, captured, total):
         """Chamado pela thread do backend — usa after(0) para tocar na UI com seguranca."""
-        self.after(0, lambda: self._sync_progress(captured, total))
+        try:
+            self.after(0, lambda: self._sync_progress(captured, total))
+        except Exception:
+            pass
 
-    def _on_finish(self, captured_images):
-        """Chamado pela thread do backend quando todas as fotos foram tiradas e analisadas."""
-        self.after(0, lambda: self._finalize())
+    def _go_to_t4b(self):
+        """Chamado quando todas as capturas terminaram — navega para a tela de analise."""
+        if not self.winfo_exists():
+            return
+        self._active = False
+        self.app.show_screen("t4b")
 
     def _sync_progress(self, captured, total):
         """Atualiza os labels e a barra de capturas com os valores vindos do backend."""
@@ -716,14 +754,6 @@ class ScreenT4(BaseScreen):
         self._lbl_cap.configure(text=f"{captured} de {total}")
         self._lbl_counter.configure(text=f"{captured} / {total}")
         self._bar_cap.set(captured / total)
-
-    def _finalize(self):
-        """Exibe a mensagem de conclusao e navega para T5 apos um breve delay."""
-        if not self.winfo_exists():
-            return
-        self._active = False
-        self._lbl_next.configure(text="Captura finalizada!", text_color=C["green"])
-        self.safe_after(1200, lambda: self.app.show_screen("t5"))
 
     # --- animacao e tick local de tempo ---
 
@@ -788,6 +818,159 @@ class ScreenT4(BaseScreen):
 
 
 # ============================================================================
+# T4b — PROCESSANDO / ANALISANDO
+# ============================================================================
+
+class ScreenT4b(BaseScreen):
+    """
+    Exibida apos a captura, enquanto o YOLO analisa as imagens em background.
+    A camera e parada nesta tela para liberar CPU do Raspberry Pi durante a analise.
+    Quando a analise termina, navega automaticamente para T5.
+    """
+
+    SPINNERS = ["|", "/", "—", "\\"]
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.total     = len(self.session.captured_images)
+        self._analyzed = 0
+        self._dot_i    = 0
+        self._active   = True
+        self._build()
+
+        # Para a camera para liberar recursos para a analise YOLO
+        self.session.camera.stop()
+
+        # Registra esta tela como destino dos callbacks de analise do backend
+        self.session._ui_analyze_progress_cb = self._on_progress_thread
+        self.session._ui_analyze_finish_cb   = lambda imgs: self.after(0, self._on_finish)
+
+        # Inicia a animacao do spinner
+        self._animate()
+
+    def _build(self):
+        # Header: indicador de analise + contador de imagens
+        hdr = ctk.CTkFrame(self, fg_color=C["transparent"], height=55)
+        hdr.pack(fill="x", padx=30, pady=(15, 8))
+        hdr.pack_propagate(False)
+
+        left = ctk.CTkFrame(hdr, fg_color=C["transparent"])
+        left.pack(side="left")
+
+        # Ponto ambar piscante indicando analise ativa
+        self._dot = ctk.CTkLabel(left, text="*",
+                                  font=ctk.CTkFont(size=24), text_color=C["amber"])
+        self._dot.pack(side="left", padx=(0, 8))
+
+        ctk.CTkLabel(left, text="ANALISANDO...",
+                     font=ctk.CTkFont(size=22, weight="bold"),
+                     text_color=C["white"]).pack(side="left")
+
+        # Contador "X / total" no canto direito
+        self._lbl_counter = ctk.CTkLabel(hdr, text=f"0 / {self.total}",
+                                          font=ctk.CTkFont(size=32, weight="bold"),
+                                          text_color=C["amber"])
+        self._lbl_counter.pack(side="right")
+
+        # Card principal
+        card = ctk.CTkFrame(self, fg_color=C["bg_card"], corner_radius=12,
+                            border_width=1, border_color=C["border"])
+        card.pack(fill="both", expand=True, padx=30, pady=(0, 8))
+
+        # Barra de progresso
+        pf = ctk.CTkFrame(card, fg_color=C["transparent"])
+        pf.pack(fill="x", padx=22, pady=(24, 8))
+
+        ph = ctk.CTkFrame(pf, fg_color=C["transparent"])
+        ph.pack(fill="x")
+        ctk.CTkLabel(ph, text="Progresso da analise",
+                     font=ctk.CTkFont(size=14), text_color=C["text2"]).pack(side="left")
+        self._lbl_pct = ctk.CTkLabel(ph, text="0%",
+                                      font=ctk.CTkFont(size=14), text_color=C["amber"])
+        self._lbl_pct.pack(side="right")
+
+        self._bar = ctk.CTkProgressBar(pf, progress_color=C["amber"],
+                                        fg_color=C["bg_card_light"],
+                                        height=18, corner_radius=9)
+        self._bar.pack(fill="x", pady=(6, 0))
+        self._bar.set(0)
+
+        # Label do arquivo atual sendo analisado
+        self._lbl_current = ctk.CTkLabel(card, text="Aguardando inicio da analise...",
+                                          font=ctk.CTkFont(size=14), text_color=C["muted"])
+        self._lbl_current.pack(pady=(18, 0))
+
+        # Spinner central
+        spinner_box = ctk.CTkFrame(card, fg_color=C["transparent"])
+        spinner_box.pack(expand=True)
+        self._spinner = ctk.CTkLabel(spinner_box, text="|",
+                                      font=ctk.CTkFont(size=42), text_color=C["amber"])
+        self._spinner.pack()
+
+        # Footer
+        foot = ctk.CTkFrame(self, fg_color=C["bg_card_light"], corner_radius=8, height=35)
+        foot.pack(fill="x", padx=30, pady=(4, 10))
+        foot.pack_propagate(False)
+        ctk.CTkLabel(
+            foot, text="Processando imagens — aguarde. Nao desligue o equipamento.",
+            font=ctk.CTkFont(size=12), text_color=C["muted"],
+        ).place(relx=0.5, rely=0.5, anchor="center")
+
+    def _animate(self):
+        """Anima o spinner e o ponto piscante enquanto a analise esta ativa."""
+        if not self._active or not self.winfo_exists():
+            return
+        self._dot_i += 1
+        self._spinner.configure(text=self.SPINNERS[self._dot_i % 4])
+        col = C["amber"] if self._dot_i % 2 == 0 else C["bg_card"]
+        self._dot.configure(text_color=col)
+        self.safe_after(150, self._animate)
+
+    def _on_progress_thread(self, idx, total, fname):
+        """Chamado pela thread do backend — agenda atualizacao na main thread."""
+        try:
+            self.after(0, lambda: self._sync_progress(idx, total, fname))
+        except Exception:
+            pass
+
+    def _sync_progress(self, idx, total, fname):
+        """Atualiza barra de progresso e label do arquivo atual."""
+        if not self.winfo_exists():
+            return
+        self._analyzed = idx
+        pct = idx / total if total > 0 else 0
+        self._bar.set(pct)
+        self._lbl_pct.configure(text=f"{pct * 100:.0f}%", text_color=C["amber"])
+        self._lbl_counter.configure(text=f"{idx} / {total}")
+        label_name = os.path.splitext(fname)[0]  # "Analise 01"
+        self._lbl_current.configure(
+            text=f"Analisando: {label_name}...", text_color=C["amber"]
+        )
+
+    def _on_finish(self):
+        """Exibe feedback de conclusao e navega para T5 apos breve pausa."""
+        if not self.winfo_exists():
+            return
+        self._active = False
+        # Feedback visual verde de conclusao
+        self._spinner.configure(text="v", text_color=C["green"])
+        self._dot.configure(text_color=C["green"])
+        self._bar.set(1.0)
+        self._lbl_pct.configure(text="100%", text_color=C["green"])
+        self._lbl_counter.configure(text=f"{self.total} / {self.total}",
+                                     text_color=C["green"])
+        self._lbl_current.configure(text="Analise concluida!", text_color=C["green"])
+        self.safe_after(1200, lambda: self.app.show_screen("t5"))
+
+    def handle_key(self, event):
+        pass  # Bloqueado durante a analise
+
+    def cleanup(self):
+        self._active = False
+        super().cleanup()
+
+
+# ============================================================================
 # T5 — EXAME CONCLUIDO
 # ============================================================================
 
@@ -795,56 +978,387 @@ class ScreenT5(BaseScreen):
 
     def __init__(self, app):
         super().__init__(app)
+        self.sel = 0  # 0 = NOVO EXAME, 1 = VER GALERIA
         self._build()
+        self._style_buttons()
 
     def _build(self):
         box = ctk.CTkFrame(self, fg_color=C["transparent"])
-        box.place(relx=0.5, rely=0.45, anchor="center")
+        box.place(relx=0.5, rely=0.44, anchor="center")
 
         # Icone de check em circulo
-        # PARA ALTERAR o tamanho do icone: mude width, height e corner_radius (metade do tamanho)
-        ring = ctk.CTkFrame(box, width=86, height=86, corner_radius=43,
+        ring = ctk.CTkFrame(box, width=76, height=76, corner_radius=38,
                             fg_color=C["transparent"],
                             border_width=4, border_color=C["green"])
-        ring.pack(pady=(0, 18))
+        ring.pack(pady=(0, 14))
         ring.pack_propagate(False)
-        ctk.CTkLabel(ring, text="v", font=ctk.CTkFont(size=40, weight="bold"),
+        ctk.CTkLabel(ring, text="v", font=ctk.CTkFont(size=36, weight="bold"),
                      text_color=C["green"]).place(relx=0.5, rely=0.48, anchor="center")
 
         ctk.CTkLabel(box, text="EXAME CONCLUIDO",
                      font=ctk.CTkFont(size=28, weight="bold"),
-                     text_color=C["white"]).pack(pady=(0, 10))
+                     text_color=C["white"]).pack(pady=(0, 8))
 
         n = len(self.session.captured_images)
-        ctk.CTkLabel(box, text=f"{n} imagens salvas com sucesso",
-                     font=ctk.CTkFont(size=16), text_color=C["green"]).pack(pady=(0, 6))
+        ctk.CTkLabel(box, text=f"{n} imagens capturadas e analisadas",
+                     font=ctk.CTkFont(size=15), text_color=C["green"]).pack(pady=(0, 4))
 
-        folder = os.path.abspath(self.session.CAPTURE_FOLDER)
-        ctk.CTkLabel(box, text=f"Pasta: {folder}",
-                     font=ctk.CTkFont(size=12), text_color=C["text2"]).pack(pady=(0, 18))
+        # Mostra a pasta do exame analisado
+        analyzed_folder = self.session.last_analyzed_folder or \
+                          os.path.abspath(self.session.ANALYZED_FOLDER)
+        ctk.CTkLabel(box, text=f"Pasta: {os.path.basename(analyzed_folder)}",
+                     font=ctk.CTkFont(size=11), text_color=C["text2"]).pack(pady=(0, 10))
 
         # Divisor horizontal
-        ctk.CTkFrame(box, height=1, fg_color=C["border"]).pack(fill="x", padx=30, pady=(0, 18))
+        ctk.CTkFrame(box, height=1, fg_color=C["border"]).pack(fill="x", padx=20, pady=(0, 12))
 
         ctk.CTkLabel(box, text="Retire o aparelho do paciente",
-                     font=ctk.CTkFont(size=16), text_color=C["amber"]).pack(pady=(0, 28))
+                     font=ctk.CTkFont(size=16), text_color=C["amber"]).pack(pady=(0, 18))
 
-        # Botao decorativo — a acao real e feita pelo teclado
-        ctk.CTkButton(
-            box, text="NOVO EXAME",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            fg_color=C["green"], hover_color=C["green_dark"],
-            text_color=C["black"], corner_radius=20,
-            width=190, height=44, state="disabled",
-        ).pack(pady=(0, 8))
+        # Dois botoes: NOVO EXAME e VER GALERIA
+        btn_bar = ctk.CTkFrame(box, fg_color=C["transparent"])
+        btn_bar.pack(pady=(0, 6))
 
-        ctk.CTkLabel(box, text="[ ENTER ]",
+        self._btn_novo = ctk.CTkButton(
+            btn_bar, text="NOVO EXAME",
+            font=ctk.CTkFont(size=15, weight="bold"),
+            corner_radius=20, width=170, height=44,
+        )
+        self._btn_novo.pack(side="left", padx=(0, 10))
+
+        self._btn_galeria = ctk.CTkButton(
+            btn_bar, text="VER GALERIA",
+            font=ctk.CTkFont(size=15, weight="bold"),
+            corner_radius=20, width=170, height=44,
+        )
+        self._btn_galeria.pack(side="left", padx=(10, 0))
+
+        ctk.CTkLabel(box, text="\u2190 \u2192  Selecionar      [ ENTER ]  Confirmar",
                      font=ctk.CTkFont(size=11), text_color=C["muted"]).pack()
 
+    def _style_buttons(self):
+        """Atualiza o estilo dos botoes conforme a selecao atual."""
+        if self.sel == 0:  # NOVO EXAME ativo
+            self._btn_novo.configure(
+                fg_color=C["green"], hover_color=C["green_dark"],
+                text_color=C["black"], border_width=0,
+            )
+            self._btn_galeria.configure(
+                fg_color=C["btn_off"], hover_color=C["btn_off"],
+                text_color=C["text2"], border_width=1,
+                border_color=C["btn_off_border"],
+            )
+        else:  # VER GALERIA ativo
+            self._btn_novo.configure(
+                fg_color=C["btn_off"], hover_color=C["btn_off"],
+                text_color=C["text2"], border_width=1,
+                border_color=C["btn_off_border"],
+            )
+            self._btn_galeria.configure(
+                fg_color=C["purple"], hover_color=C["purple_light"],
+                text_color=C["white"], border_width=0,
+            )
+
     def handle_key(self, event):
-        if event.keysym == "Return":
-            # Usa new_exam() para limpar o estado antes de voltar ao splash
-            self.app.new_exam()
+        k = event.keysym
+        if k == "Left":
+            self.sel = 0
+            self._style_buttons()
+        elif k == "Right":
+            self.sel = 1
+            self._style_buttons()
+        elif k == "Return":
+            if self.sel == 0:
+                self.app.new_exam()
+            else:
+                self.app._gallery_origin = "t5"
+                self.app.show_screen("galeria")
+
+
+# ============================================================================
+# GALERIA — BIBLIOTECA DE EXAMES
+# ============================================================================
+
+class ScreenGaleria(BaseScreen):
+    """
+    Biblioteca de exames analisados — 3 niveis de navegacao:
+      Nivel 1: lista de exames (pastas por data)
+      Nivel 2: lista de analises (imagens do exame selecionado)
+      Nivel 3: visualizacao da imagem com anotacoes YOLO e confianca em %
+    Navegacao: Up/Down seleciona, ENTER abre, Left volta.
+    """
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.level      = 1
+        self.exams: list = []
+        self.exam_idx   = 0
+        self.image_idx  = 0
+        self._cur_exam  = None  # dict: name, folder, images, detections
+        self._build_chrome()
+        self._load_data()
+        self._show_level1()
+
+    # --- estrutura persistente (header + content + footer) ---
+
+    def _build_chrome(self):
+        """Constroi header e footer persistentes e a area de conteudo intercambivel."""
+        self._hdr = ctk.CTkFrame(self, fg_color=C["bg_card"], corner_radius=0, height=50)
+        self._hdr.pack(fill="x")
+        self._hdr.pack_propagate(False)
+
+        self._lbl_title = ctk.CTkLabel(
+            self._hdr, text="GALERIA DE EXAMES",
+            font=ctk.CTkFont(size=17, weight="bold"), text_color=C["white"],
+        )
+        self._lbl_title.place(relx=0.5, rely=0.5, anchor="center")
+
+        self._content = ctk.CTkFrame(self, fg_color=C["transparent"])
+        self._content.pack(fill="both", expand=True)
+
+        self._foot = ctk.CTkFrame(self, fg_color=C["bg_card_light"],
+                                   corner_radius=0, height=38)
+        self._foot.pack(fill="x")
+        self._foot.pack_propagate(False)
+
+        self._lbl_hints = ctk.CTkLabel(
+            self._foot, text="",
+            font=ctk.CTkFont(size=11), text_color=C["muted"],
+        )
+        self._lbl_hints.place(relx=0.5, rely=0.5, anchor="center")
+
+    def _clear_content(self):
+        """Remove todos os widgets da area de conteudo."""
+        for w in self._content.winfo_children():
+            w.destroy()
+
+    def _load_data(self):
+        """Carrega a lista de exames da pasta analisada."""
+        self.exams = self.session.get_exam_gallery()
+
+    # --- nivel 1: lista de exames ---
+
+    def _show_level1(self):
+        self.level = 1
+        self._lbl_title.configure(text="GALERIA DE EXAMES")
+        self._lbl_hints.configure(
+            text="\u2191 \u2193  Navegar      ENTER  Abrir      \u2190  Voltar"
+        )
+        self._clear_content()
+
+        if not self.exams:
+            ctk.CTkLabel(
+                self._content, text="Nenhum exame encontrado na galeria.",
+                font=ctk.CTkFont(size=15), text_color=C["muted"],
+            ).place(relx=0.5, rely=0.5, anchor="center")
+            return
+
+        scroll = ctk.CTkScrollableFrame(
+            self._content, fg_color=C["transparent"], corner_radius=0,
+        )
+        scroll.pack(fill="both", expand=True, padx=0, pady=4)
+
+        for i, exam in enumerate(self.exams):
+            is_sel = (i == self.exam_idx)
+            row = ctk.CTkFrame(
+                scroll,
+                fg_color=C["bg_card_light"] if is_sel else C["bg_card"],
+                corner_radius=10,
+                border_width=2 if is_sel else 0,
+                border_color=C["green"],
+                height=64,
+            )
+            row.pack(fill="x", padx=18, pady=(4, 0))
+            row.pack_propagate(False)
+
+            ctk.CTkLabel(
+                row, text=">" if is_sel else " ",
+                font=ctk.CTkFont(size=16, weight="bold"),
+                text_color=C["green"],
+            ).place(relx=0.015, rely=0.5, anchor="w")
+
+            ctk.CTkLabel(
+                row, text=exam["name"],
+                font=ctk.CTkFont(size=14, weight="bold" if is_sel else "normal"),
+                text_color=C["white"] if is_sel else C["text2"],
+            ).place(relx=0.06, rely=0.30, anchor="w")
+
+            n_imgs = len(exam["images"])
+            ctk.CTkLabel(
+                row, text=f"{n_imgs} analise{'s' if n_imgs != 1 else ''}",
+                font=ctk.CTkFont(size=12), text_color=C["muted"],
+            ).place(relx=0.06, rely=0.72, anchor="w")
+
+    # --- nivel 2: lista de analises ---
+
+    def _show_level2(self):
+        self.level = 2
+        self._lbl_title.configure(text=self._cur_exam["name"])
+        self._lbl_hints.configure(
+            text="\u2191 \u2193  Navegar      ENTER  Visualizar      \u2190  Voltar"
+        )
+        self._clear_content()
+
+        images  = self._cur_exam["images"]
+        det_map = self._cur_exam["detections"]
+
+        scroll = ctk.CTkScrollableFrame(
+            self._content, fg_color=C["transparent"], corner_radius=0,
+        )
+        scroll.pack(fill="both", expand=True, pady=4)
+
+        for i, img_path in enumerate(images):
+            img_name  = os.path.basename(img_path)     # "Analise 01.jpg"
+            img_label = os.path.splitext(img_name)[0]  # "Analise 01"
+            is_sel    = (i == self.image_idx)
+            dets      = det_map.get(img_name, [])
+
+            if dets:
+                det_text = "   |   ".join(
+                    f"{d['label'].upper()} {d['conf'] * 100:.1f}%" for d in dets
+                )
+            else:
+                det_text = "Sem deteccao"
+
+            row = ctk.CTkFrame(
+                scroll,
+                fg_color=C["bg_card_light"] if is_sel else C["bg_card"],
+                corner_radius=10,
+                border_width=2 if is_sel else 0,
+                border_color=C["green"],
+                height=58,
+            )
+            row.pack(fill="x", padx=18, pady=(4, 0))
+            row.pack_propagate(False)
+
+            ctk.CTkLabel(
+                row, text=">" if is_sel else " ",
+                font=ctk.CTkFont(size=14, weight="bold"),
+                text_color=C["green"],
+            ).place(relx=0.015, rely=0.5, anchor="w")
+
+            ctk.CTkLabel(
+                row, text=img_label,
+                font=ctk.CTkFont(size=14, weight="bold" if is_sel else "normal"),
+                text_color=C["white"] if is_sel else C["text2"],
+            ).place(relx=0.06, rely=0.5, anchor="w")
+
+            ctk.CTkLabel(
+                row, text=det_text,
+                font=ctk.CTkFont(size=11),
+                text_color=C["amber"] if is_sel else C["muted"],
+            ).place(relx=0.97, rely=0.5, anchor="e")
+
+    # --- nivel 3: visualizacao da imagem ---
+
+    def _show_level3(self):
+        self.level = 3
+        images   = self._cur_exam["images"]
+        det_map  = self._cur_exam["detections"]
+        img_path = images[self.image_idx]
+        img_name  = os.path.basename(img_path)
+        img_label = os.path.splitext(img_name)[0]
+
+        self._lbl_title.configure(
+            text=f"{img_label}   [{self.image_idx + 1} / {len(images)}]"
+        )
+        self._lbl_hints.configure(
+            text="\u2191 \u2193  Navegar imagens      \u2190  Voltar para lista"
+        )
+        self._clear_content()
+
+        # Deteccoes em % na linha de topo
+        dets = det_map.get(img_name, [])
+        if dets:
+            det_text = "   |   ".join(
+                f"{d['label'].upper()} {d['conf'] * 100:.1f}%" for d in dets
+            )
+        else:
+            det_text = "Sem deteccao"
+
+        ctk.CTkLabel(
+            self._content, text=det_text,
+            font=ctk.CTkFont(size=12), text_color=C["amber"],
+        ).pack(pady=(5, 0))
+
+        # Frame da imagem
+        img_frame = ctk.CTkFrame(
+            self._content, fg_color=C["bg_card"], corner_radius=8
+        )
+        img_frame.pack(fill="both", expand=True, padx=16, pady=(4, 6))
+
+        self._img_lbl = tk.Label(img_frame, bg=C["bg_card"], bd=0, highlightthickness=0)
+        self._img_lbl.pack(fill="both", expand=True)
+
+        # Carrega a imagem apos o widget ser desenhado pelo tkinter
+        self.safe_after(60, lambda: self._render_image(img_path))
+
+    def _render_image(self, img_path):
+        """Carrega e exibe a imagem anotada, ajustando ao espaco disponivel."""
+        if not self.winfo_exists() or not hasattr(self, "_img_lbl"):
+            return
+        if not _PIL_OK:
+            self._img_lbl.configure(
+                text="PIL nao instalado — imagem nao pode ser exibida",
+                fg=C["muted"], font=("Segoe UI", 11),
+            )
+            return
+        try:
+            # Usa dimensoes do widget se disponiveis, senao usa fallback baseado na tela
+            w = max(self._img_lbl.winfo_width(),  SCREEN_WIDTH  - 40)
+            h = max(self._img_lbl.winfo_height(), SCREEN_HEIGHT - 160)
+            pil_img = Image.open(img_path)
+            pil_img.thumbnail((w, h), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(pil_img)
+            self._img_lbl.configure(image=photo, text="")
+            self._img_lbl.image = photo  # evita garbage collection
+        except Exception as e:
+            print(f"[AVISO] Galeria: erro ao exibir imagem: {e}")
+
+    # --- teclado ---
+
+    def handle_key(self, event):
+        k = event.keysym
+
+        if self.level == 1:
+            if k == "Up" and self.exam_idx > 0:
+                self.exam_idx -= 1
+                self._show_level1()
+            elif k == "Down" and self.exam_idx < len(self.exams) - 1:
+                self.exam_idx += 1
+                self._show_level1()
+            elif k == "Return" and self.exams:
+                self._cur_exam = self.exams[self.exam_idx]
+                self.image_idx = 0
+                self._show_level2()
+            elif k == "Left":
+                # Volta para a tela de origem (T1 ou T5)
+                origin = getattr(self.app, "_gallery_origin", "t1")
+                self.app.show_screen(origin)
+
+        elif self.level == 2:
+            images = self._cur_exam["images"]
+            if k == "Up" and self.image_idx > 0:
+                self.image_idx -= 1
+                self._show_level2()
+            elif k == "Down" and self.image_idx < len(images) - 1:
+                self.image_idx += 1
+                self._show_level2()
+            elif k == "Return":
+                self._show_level3()
+            elif k == "Left":
+                self._show_level1()
+
+        elif self.level == 3:
+            images = self._cur_exam["images"]
+            if k == "Up" and self.image_idx > 0:
+                self.image_idx -= 1
+                self._show_level3()
+            elif k == "Down" and self.image_idx < len(images) - 1:
+                self.image_idx += 1
+                self._show_level3()
+            elif k == "Left":
+                self._show_level2()
 
 
 # ============================================================================
@@ -859,12 +1373,14 @@ class VisualDetectUI(ctk.CTk):
 
     SCREENS = {
         "loading": ScreenLoading,
-        "t0": ScreenT0,
-        "t1": ScreenT1,
-        "t2": ScreenT2,
-        "t3": ScreenT3,
-        "t4": ScreenT4,
-        "t5": ScreenT5,
+        "t0":      ScreenT0,
+        "t1":      ScreenT1,
+        "t2":      ScreenT2,
+        "t3":      ScreenT3,
+        "t4":      ScreenT4,
+        "t4b":     ScreenT4b,
+        "t5":      ScreenT5,
+        "galeria": ScreenGaleria,
     }
 
     def __init__(self, backend_session):
@@ -880,6 +1396,7 @@ class VisualDetectUI(ctk.CTk):
         self.resizable(False, False)
 
         self.current_screen: BaseScreen | None = None
+        self._gallery_origin: str = "t1"  # tela de origem ao abrir a galeria
 
         # Atalhos de teclado globais
         self.bind("<KeyPress>", self._on_key)
