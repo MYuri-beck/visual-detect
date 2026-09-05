@@ -1,7 +1,25 @@
-# VisualDetect — Guia do Usuário
+﻿# VisualDetect — Guia do Usuário
 
-**Equipamento de Triagem do Reflexo Ocular**  
-SENAI / NUDEP — Curso Técnico em Desenvolvimento de Sistemas
+**Equipamento de Triagem do Reflexo Ocular**
+SENAI / NUDEP — 2026
+
+---
+
+> ⚠️ **Aviso importante:** O VisualDetect é uma ferramenta de **triagem**.
+> O resultado deve **sempre** ser avaliado por um médico oftalmologista.
+> Este equipamento **não substitui diagnóstico médico**.
+
+---
+
+## Início Rápido — 3 Passos
+
+> Para quem já conhece o equipamento:
+
+```
+1. Ligue o equipamento e aguarde a tela inicial aparecer (~30–60 segundos)
+2. Pressione ENTER para iniciar → configure o exame com ↑ ↓ → pressione ENTER
+3. Posicione o paciente → selecione INICIAR → pressione ENTER → aguarde o exame
+```
 
 ---
 
@@ -13,198 +31,213 @@ O **VisualDetect** é um equipamento de triagem desenvolvido para auxiliar na de
 O equipamento fotografa o olho do paciente e analisa automaticamente o reflexo pupilar,
 identificando padrões que podem indicar a presença do tumor.
 
-> ⚠️ **Importante:** O VisualDetect é uma ferramenta de **triagem**. O resultado deve ser
-> sempre avaliado por um médico oftalmologista. Não substitui diagnóstico médico.
-
 ---
 
 ## O que você vai precisar
 
 | Item | Descrição |
-|------|-----------|
-| Equipamento VisualDetect | Raspberry Pi com tela e câmera acoplada |
-| Cabo de energia | Fonte USB-C do equipamento |
-| Teclado de controle | Teclado físico com 5 botões (← → ↑ ↓ ENTER) |
+|---|---|
+| Equipamento VisualDetect | Caixa com Raspberry Pi, tela e câmera acoplada |
+| Fonte de alimentação | Cabo USB-C fornecido com o equipamento |
+| Controle físico | Teclado com 5 botões (← → ↑ ↓ ENTER) — já conectado |
 
 ---
 
-## Como ligar o equipamento
+## Os 5 Botões de Controle
 
-1. Conecte o cabo de energia ao equipamento.
-2. Aguarde a inicialização (pode levar cerca de **30 a 60 segundos**).
-3. A tela acenderá automaticamente e o sistema iniciará.
-4. Não é necessário apertar nenhum botão para ligar.
+O equipamento é controlado por **5 botões físicos**. Aprenda uma vez e use sempre:
 
----
+| Botão | Símbolo | O que faz |
+|---|---|---|
+| **Esquerda** | `←` | Voltar à tela anterior / cancelar / selecionar opção da esquerda |
+| **Direita** | `→` | Avançar / selecionar opção da direita |
+| **Cima** | `↑` | Aumentar um número / mover para cima em uma lista |
+| **Baixo** | `↓` | Diminuir um número / mover para baixo em uma lista |
+| **Confirmar** | `ENTER` | Confirmar a seleção atual / avançar para a próxima tela |
 
-## Controles — Teclado físico
-
-O equipamento é controlado por **5 botões físicos**:
-
-| Botão | Símbolo | Função |
-|-------|---------|--------|
-| Esquerda | `←` | Voltar / Cancelar |
-| Direita  | `→` | Selecionar próximo |
-| Cima     | `↑` | Aumentar valor |
-| Baixo    | `↓` | Diminuir valor |
-| Confirmar | `ENTER` | Confirmar / Avançar |
+> **Dica:** Quando estiver em dúvida, pressione `ENTER` para confirmar
+> ou `←` para voltar ao passo anterior.
 
 ---
 
-## Fluxo completo de um exame
+## Passo a Passo — Realizando um Exame
 
-### Tela 1 — Carregando
-Ao ligar o equipamento, uma barra de progresso indica que o sistema está carregando.
-**Aguarde** — o sistema avança automaticamente quando estiver pronto.
+### Passo 1 — Ligar o equipamento
 
----
+1. Conecte o cabo de alimentação.
+2. Aguarde entre **30 e 60 segundos** — o sistema está carregando a inteligência artificial.
+3. Quando a tela de boas-vindas aparecer, o equipamento está pronto.
 
-### Tela 2 — Informações SENAI / NUDEP
-Exibe as informações institucionais do projeto.
-
-**→ Pressione `ENTER` para continuar.**
+> Não é necessário apertar nenhum botão para ligar.
+> A barra de progresso na tela indica que o sistema está inicializando.
 
 ---
 
-### Tela 3 — Tela Inicial (Splash)
-Tela de boas-vindas com o logotipo do VisualDetect.
+### Passo 2 — Tela de Boas-Vindas
 
-**→ Pressione `ENTER` para iniciar a configuração do exame.**
+Você verá a tela inicial com o logotipo **VisualDetect** e duas opções:
+- **INICIAR** — começa um novo exame
+- **GALERIA** — acessa exames anteriores
+
+**→ Pressione `ENTER` para iniciar um novo exame.**
 
 ---
 
-### Tela 4 — Configuração do Exame
+### Passo 3 — Configurar o Exame
 
-Você configura **dois parâmetros** do exame, um de cada vez:
+Você vai configurar dois parâmetros, um de cada vez:
 
-#### Passo 1 — Número de capturas
-Define quantas fotos o equipamento vai tirar durante o exame.
+#### Número de capturas
 
-- Pressione `↑` para **aumentar** o número de fotos.
-- Pressione `↓` para **diminuir**.
-- Pressione `ENTER` para confirmar e ir ao próximo passo.
+Define quantas fotos o equipamento vai tirar.
 
-> **Recomendado:** entre 8 e 15 fotos.
+- `↑` para **aumentar** o número
+- `↓` para **diminuir** o número
+- `ENTER` para confirmar e ir ao próximo
 
-#### Passo 2 — Tempo total do exame
-Define quantos segundos dura o exame no total.
+> **Recomendado:** entre **8 e 15 fotos** por exame.
 
-- Pressione `↑` para **aumentar** o tempo.
-- Pressione `↓` para **diminuir**.
-- Pressione `ENTER` para confirmar.
+#### Tempo total do exame
+
+Define quantos segundos dura o exame.
+
+- `↑` para **aumentar** o tempo
+- `↓` para **diminuir** o tempo
+- `ENTER` para confirmar
 
 > **Exemplo:** 10 fotos em 10 segundos = 1 foto por segundo.
 
-**Para voltar ao passo anterior:** pressione `←`.
+**Para voltar ao passo anterior a qualquer momento:** pressione `←`
 
 ---
 
-### Tela 5 — Revisão + Câmera ao vivo
+### Passo 4 — Posicionar o Paciente
 
-Exibe um resumo das configurações e o **feed ao vivo da câmera**.
+Esta tela mostra um **resumo das configurações** e a **imagem ao vivo da câmera**.
 
-Use essa tela para **posicionar o paciente** corretamente na frente da câmera.
+1. Use o feed da câmera para posicionar o olho do paciente no centro da imagem.
+2. Verifique se há iluminação adequada.
+3. Quando estiver pronto:
+   - `→` para selecionar **INICIAR**
+   - `ENTER` para confirmar e iniciar o exame
+
+> Se precisar ajustar as configurações, pressione `←` para **VOLTAR**.
+
+---
+
+### Passo 5 — Aguardar o Exame
+
+O equipamento está fotografando. **Nesta tela:**
+
+- ❌ **Não mova o paciente** — cada movimento pode prejudicar a captura
+- ❌ **Não pressione os botões** — estão bloqueados durante o exame
+- ✅ Aguarde — o equipamento avança automaticamente
+
+A barra de progresso e o contador mostram quantas fotos já foram tiradas e quanto falta.
+
+---
+
+### Passo 6 — Análise Automática
+
+Após as fotos, o sistema analisa automaticamente as imagens com IA.
+Isso dura alguns segundos. **Aguarde.**
+
+---
+
+### Passo 7 — Exame Concluído
+
+A tela mostra que o exame foi concluído e as imagens foram salvas.
+
+Você tem duas opções:
+- **NOVO EXAME** (`←` + `ENTER`) — inicia outro exame imediatamente
+- **GALERIA** (`→` + `ENTER`) — vê os resultados do exame atual
+
+---
+
+## Entendendo os Resultados
+
+As fotos analisadas ficam salvas no equipamento com marcações coloridas:
+
+| Resultado na imagem | O que significa |
+|---|---|
+| **REFLEXO-NORMAL** | Reflexo pupilar dentro do padrão esperado |
+| **REFLEXO-ANORMAL** | Padrão diferente do normal — encaminhar para avaliação médica |
+| *(sem marcação)* | O sistema não identificou o olho na foto — refaça o exame |
+
+> ⚠️ **Qualquer resultado deve ser avaliado por um médico.**
+> Um resultado NORMAL não garante ausência de problema.
+> Um resultado ANORMAL não confirma diagnóstico de Retinoblastoma.
+
+---
+
+## Usando a Galeria
+
+A Galeria permite visualizar exames anteriores organizados por data:
 
 | Botão | Ação |
-|-------|------|
-| `→` | Selecionar **INICIAR** |
-| `←` | Selecionar **VOLTAR** |
-| `ENTER` | Confirmar a seleção |
-
-**→ Posicione o paciente, selecione INICIAR e pressione `ENTER`.**
+|---|---|
+| `↑` / `↓` | Navegar entre exames / imagens |
+| `ENTER` | Abrir o exame ou a imagem selecionada |
+| `←` | Voltar ao nível anterior |
 
 ---
 
-### Tela 6 — Capturando
+## O que fazer em caso de problema
 
-O equipamento está fotografando. **Não mova o paciente durante esta tela.**
+### A tela está preta / o equipamento não responde
 
-- A barra de progresso mostra quantas fotos já foram tiradas.
-- O contador de tempo mostra quanto falta para o exame terminar.
-- Os botões ficam **bloqueados** — o exame não pode ser interrompido.
+1. Aguarde **2 minutos** — o sistema pode estar carregando.
+2. Se persistir, desconecte o cabo de alimentação, aguarde 15 segundos e reconecte.
 
-Aguarde o equipamento concluir automaticamente.
-
----
-
-### Tela 7 — Exame Concluído
-
-Indica que o exame terminou e as fotos foram salvas e analisadas.
-
-**→ Pressione `ENTER` para realizar um novo exame.**
-
----
-
-## Onde ficam as fotos salvas?
-
-Após cada exame, as imagens são salvas automaticamente no próprio equipamento, em duas pastas:
-
-| Pasta | Conteúdo |
-|-------|----------|
-| `capturas_voluntarios_analisar/` | Fotos originais do exame |
-| `capturas_analisadas_voluntarios/` | Fotos com marcações do sistema de IA |
-
-O nome de cada arquivo inclui a data e hora do exame (ex: `20260716_151139_capture_1.jpg`).
-
-> Para acessar as fotos, conecte um monitor e teclado ao equipamento
-> ou transfira via rede (consulte o técnico responsável).
-
----
-
-## Resultados da análise
-
-O sistema detecta automaticamente dois padrões:
-
-| Resultado | O que significa |
-|-----------|----------------|
-| **REFLEXO-NORMAL** | Reflexo pupilar dentro do padrão esperado |
-| **REFLEXO-ANORMAL** | Padrão de reflexo diferente do normal — requer avaliação médica |
-| **Nenhuma detecção** | O sistema não identificou o olho na foto — refaça o exame |
-
-> ⚠️ Qualquer resultado **deve ser avaliado por um médico**. O sistema é uma ferramenta de auxílio.
-
----
-
-## O que fazer em caso de erro
-
-### A tela ficou preta / o equipamento não responde
-
-1. Aguarde 1 minuto (o sistema pode estar carregando).
-2. Se persistir, desligue o cabo de energia, aguarde 10 segundos e ligue novamente.
-
-### A câmera não aparece (mensagem "Câmera não disponível")
+### A câmera não aparece na tela de posicionamento
 
 1. Verifique se a câmera está bem conectada ao equipamento.
 2. Desligue e religue o equipamento.
 3. Se o problema continuar, acione o suporte técnico.
 
-### O exame terminou mas poucas fotos foram tiradas
+### O exame terminou, mas as fotos parecem borradas
 
-- Verifique se a câmera está conectada e apontada corretamente para o paciente.
-- Repita o exame com o paciente posicionado centralmente na câmera.
+- Certifique-se de que o paciente estava imóvel durante o exame.
+- Verifique se a lente da câmera está limpa.
+- Repita o exame.
 
-### Qualquer outro erro
+### O controle físico (botões) não responde
 
-Anote a mensagem que apareceu na tela e acione o suporte técnico:  
+1. Verifique se o cabo do controlador está conectado ao equipamento.
+2. Tente pressionar os botões com mais firmeza.
+3. Se não funcionar, acione o suporte técnico.
+
+### Qualquer outro problema
+
+Anote a mensagem que apareceu na tela e acione o suporte técnico:
+
 **Yuri Mendes / Andrei Krug — SENAI NUDEP**
 
 ---
 
-## Cuidados com o equipamento
+## Cuidados com o Equipamento
 
-- **Não desconecte** o cabo de energia durante um exame em andamento.
-- **Não force** os botões físicos.
-- Mantenha a **lente da câmera limpa** — use pano macio e seco.
-- Guarde o equipamento em local **seco e arejado**.
-- Não exponha à luz solar direta por longos períodos.
-
----
-
-## Dúvidas?
-
-Entre em contato com a equipe técnica responsável pelo equipamento.
+- **Não desconecte** o cabo de alimentação durante um exame em andamento
+- **Não force** os botões físicos do controlador
+- **Limpe a lente da câmera** regularmente com pano macio e seco (sem líquidos)
+- Guarde o equipamento em local **seco, arejado e longe de luz solar direta**
+- **Não exponha a impactos** — é um equipamento eletrônico sensível
 
 ---
 
-*VisualDetect v1.0 — SENAI / NUDEP — 2026*  
-*Projeto acadêmico — Curso Técnico em Desenvolvimento de Sistemas*
+## Onde ficam as fotos salvas?
+
+As imagens são salvas automaticamente no próprio equipamento após cada exame:
+
+| Pasta | Conteúdo |
+|---|---|
+| `capturas_voluntarios_analisar/` | Fotos originais do exame |
+| `capturas_analisadas_voluntarios/` | Fotos com marcações da IA |
+
+> Para acessar as fotos, conecte um monitor e teclado ao equipamento
+> ou solicite ao suporte técnico a transferência dos arquivos.
+
+---
+
+*VisualDetect — SENAI / NUDEP — Projeto Técnico 2026*
+*Curso Técnico em Desenvolvimento de Sistemas*

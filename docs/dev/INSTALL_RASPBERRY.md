@@ -1,7 +1,7 @@
 # VisualDetect — Guia de Instalação no Raspberry Pi
 
-> Guia para desenvolvedores e técnicos configurarem o hardware dedicado.
-> Para o guia do usuário final (médico), consulte [`docs/user_guide/GUIA_DO_USUARIO.md`](../user_guide/GUIA_DO_USUARIO.md).
+> **Público:** Desenvolvedores e técnicos configurando o hardware dedicado.
+> Para o guia do usuário final (médico/operador), consulte [`docs/user_guide/GUIA_DO_USUARIO.md`](../user_guide/GUIA_DO_USUARIO.md).
 
 ---
 
@@ -14,9 +14,10 @@
 5. [Tutorial: Instalar o VisualDetect](#5-tutorial-instalar-o-visualdetect)
 6. [Onde colocar o modelo `.pt`](#6-onde-colocar-o-modelo-pt)
 7. [Parâmetros configuráveis](#7-parâmetros-configuráveis)
-8. [Tutorial: Configurar autostart (hardware dedicado)](#8-tutorial-configurar-autostart-hardware-dedicado)
-9. [Comandos do dia a dia](#9-comandos-do-dia-a-dia)
-10. [Solução de problemas](#10-solução-de-problemas)
+8. [Tutorial: Gravar o firmware no Pico 2W (controlador HID)](#8-tutorial-gravar-o-firmware-no-pico-2w-controlador-hid)
+9. [Tutorial: Configurar autostart (hardware dedicado)](#9-tutorial-configurar-autostart-hardware-dedicado)
+10. [Comandos do dia a dia](#10-comandos-do-dia-a-dia)
+11. [Solução de problemas](#11-solução-de-problemas)
 
 ---
 
@@ -345,7 +346,104 @@ camera.start(1)  # índice 1 = segunda câmera
 
 ---
 
-## 8. Tutorial: Configurar autostart (hardware dedicado)
+## 8. Tutorial: Gravar o firmware no Pico 2W (controlador HID)
+
+O **Raspberry Pi Pico 2W** é o controlador físico de botões. Ele se conecta via USB ao
+Raspberry Pi 4 e é reconhecido como **teclado USB padrão** — sem drivers adicionais.
+
+### O que você vai precisar
+
+| Item | Detalhe |
+|---|---|
+| Raspberry Pi Pico 2W | Chip RP2350 — com suporte USB nativo |
+| Cabo Micro-USB | Para gravar o firmware e conectar ao Raspberry Pi 4 |
+| Computador com Arduino IDE | Para compilar e gravar o firmware |
+| 5 botões push-button | Ligados entre GPIO e GND |
+
+### Passo 1 — Instalar o Arduino IDE
+
+Baixe em: **https://www.arduino.cc/en/software**
+
+### Passo 2 — Adicionar o core arduino-pico
+
+1. Abra o Arduino IDE
+2. Vá em `Arquivo → Preferências`
+3. No campo **"URLs adicionais para gerenciadores de placas"**, adicione:
+
+```
+https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+```
+
+4. Clique em **OK**
+
+### Passo 3 — Instalar a placa
+
+1. Vá em `Ferramentas → Gerenciador de Placas`
+2. Pesquise: `Raspberry Pi Pico/RP2040`
+3. Clique em **Instalar** (pode demorar alguns minutos)
+
+### Passo 4 — Configurar o Arduino IDE
+
+1. `Ferramentas → Placa → Raspberry Pi RP2040 Boards → Raspberry Pi Pico 2 W`
+2. `Ferramentas → USB Stack → TinyUSB`
+
+### Passo 5 — Abrir o firmware
+
+No Arduino IDE: `Arquivo → Abrir` → navegue até:
+
+```
+visual-detect/firmware/pico2w_hid_controller/pico2w_hid_controller.ino
+```
+
+### Passo 6 — Gravar (primeira vez — modo BOOTSEL)
+
+1. **Segure** o botão **BOOTSEL** no Pico 2W
+2. Conecte o cabo Micro-USB ao computador **enquanto segura BOOTSEL**
+3. **Solte** o BOOTSEL — o Pico aparece como pendrive chamado `RPI-RP2`
+4. No Arduino IDE, clique em **Upload** (→)
+5. Aguarde a gravação concluir
+6. O Pico reinicia automaticamente como teclado HID
+
+> **Gravações seguintes:** Após a primeira gravação, o Arduino IDE grava diretamente via porta COM, sem precisar do modo BOOTSEL.
+
+### Passo 7 — Conectar ao Raspberry Pi 4
+
+```
+Pico 2W (Micro-USB) ──────────── USB-A ──── Raspberry Pi 4
+```
+
+O Raspberry Pi 4 reconhece o Pico como teclado USB imediatamente.
+Verifique no terminal do Raspberry Pi:
+
+```bash
+# Lista dispositivos USB conectados — deve aparecer o Pico como HID keyboard
+lsusb
+
+# Ou verifique eventos de teclado:
+sudo evtest
+```
+
+### Passo 8 — Ligar os botões
+
+Esquema de ligação de cada botão:
+
+```
+GPIO XX ─────────[ botão ]───────── GND
+```
+
+| GPIO | Botão | Tecla |
+|---|---|---|
+| 5 | Seta Direita | RIGHT_ARROW |
+| 6 | Seta Esquerda | LEFT_ARROW |
+| 7 | Seta Cima | UP_ARROW |
+| 8 | Seta Baixo | DOWN_ARROW |
+| 9 | Enter | RETURN |
+
+> Documentação completa: [`firmware/pico2w_hid_controller/README.md`](../../firmware/pico2w_hid_controller/README.md)
+
+---
+
+## 9. Tutorial: Configurar autostart (hardware dedicado)
 
 O autostart faz o VisualDetect abrir **automaticamente ao ligar o Raspberry Pi**, sem precisar de teclado, mouse ou login manual — como um equipamento médico dedicado.
 
@@ -436,7 +534,7 @@ sudo systemctl stop visualdetect.service
 
 ---
 
-## 9. Comandos do dia a dia
+## 10. Comandos do dia a dia
 
 ### Verificar logs do app
 
@@ -485,7 +583,7 @@ ssh pi@192.168.1.XXX
 
 ---
 
-## 10. Solução de problemas
+## 11. Solução de problemas
 
 ### O app não abre / tela preta
 
@@ -540,6 +638,30 @@ free -h
 swapon --show
 ```
 
+### Pico 2W não é reconhecido como teclado
+
+```bash
+# Verificar se o sistema detectou o dispositivo USB
+lsusb
+# Deve aparecer algo como: Raspberry Pi / HID Keyboard
+
+# Se não aparecer:
+# 1. Troque o cabo Micro-USB (use um cabo que suporte dados, não só carga)
+# 2. Verifique se o firmware foi gravado com USB Stack = TinyUSB no Arduino IDE
+# 3. Regravar o firmware com o modo BOOTSEL
+```
+
+### Botão pressionado não faz nada na interface
+
+```bash
+# Verifique se o app está com foco (janela ativa)
+# No Raspberry Pi com autostart, clique na tela ou pressione qualquer tecla
+
+# Teste se o Pico está enviando teclas com o monitor serial do Arduino IDE
+# (conecte o Pico no PC e abra Ferramentas → Monitor Serial, 115200 baud)
+# Ao pressionar um botão, deve aparecer: [HID] Botao GPIO X -> ...
+```
+
 ### O app inicia mas não aparece na tela
 
 O systemd pode iniciar antes da interface gráfica estar pronta.
@@ -579,7 +701,14 @@ VisualDetect/
 │   │   ├── install_rpi.sh         ← script de instalação automática
 │   │   └── visualdetect.service   ← serviço systemd para autostart
 │   └── user_guide/
-│       └── GUIA_DO_USUARIO.md     ← guia para o médico
+│       └── GUIA_DO_USUARIO.md     ← guia para o operador / médico
+│
+├── firmware/
+│   ├── pico2w_hid_controller/     ← FIRMWARE ATIVO (Raspberry Pi Pico 2W)
+│   │   ├── pico2w_hid_controller.ino
+│   │   └── README.md
+│   └── esp32_hid_controller/      ← Legado (ESP32-S2/S3)
+│       └── esp32_hid_controller.ino
 │
 ├── requirements_pc.txt     ← dependências Python para PC e Raspberry Pi
 └── requirements_rpi.txt    ← dependências extras do Raspberry Pi
