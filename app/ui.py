@@ -47,6 +47,13 @@ except ImportError:
 SCREEN_WIDTH  = 800
 SCREEN_HEIGHT = 480
 
+# TOUCH_MODE: True  → navegação por toque/clique (display touchscreen)
+#             False → navegação por teclado/HID Pico 2W (padrão de produto)
+# PARA ALTERAR: troque False por True abaixo.
+# Esta configuração é exclusiva para o desenvolvedor — o usuário final
+# não tem acesso a ela no produto acabado.
+TOUCH_MODE = True
+
 # Paleta de cores da aplicacao (roxo escuro + verde + ambar)
 # PARA ALTERAR qualquer cor: mude o valor hex correspondente
 C = {
@@ -216,8 +223,18 @@ class ScreenT0(BaseScreen):
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=C["white"]).pack(pady=(0, 30))
 
-        ctk.CTkLabel(box, text="Pressione ENTER para continuar",
-                     font=ctk.CTkFont(size=12), text_color=C["muted"]).pack()
+        if TOUCH_MODE:
+            ctk.CTkButton(
+                box, text="CONTINUAR",
+                font=ctk.CTkFont(size=14, weight="bold"),
+                corner_radius=20, width=180, height=42,
+                fg_color=C["green"], hover_color=C["green_dark"],
+                text_color=C["black"],
+                command=lambda: self.app.show_screen("t1"),
+            ).pack()
+        else:
+            ctk.CTkLabel(box, text="Pressione ENTER para continuar",
+                         font=ctk.CTkFont(size=12), text_color=C["muted"]).pack()
 
     def handle_key(self, event):
         if event.keysym == "Return":
@@ -235,6 +252,8 @@ class ScreenT1(BaseScreen):
         self.sel = 0  # 0 = INICIAR, 1 = GALERIA
         self._build()
         self._style_buttons()
+        if TOUCH_MODE:
+            self._setup_touch()
 
     def _build(self):
         # Card central com borda sutil
@@ -316,6 +335,15 @@ class ScreenT1(BaseScreen):
                 text_color=C["white"], border_width=0,
             )
 
+    def _setup_touch(self):
+        """Liga comandos de clique nos botões do splash (TOUCH_MODE = True)."""
+        self._btn_start.configure(command=lambda: self.app.show_screen("t2"))
+        self._btn_gallery.configure(command=self._touch_go_gallery)
+
+    def _touch_go_gallery(self):
+        self.app._gallery_origin = "t1"
+        self.app.show_screen("galeria")
+
     def handle_key(self, event):
         k = event.keysym
         if k == "Up":
@@ -392,6 +420,23 @@ class ScreenT2(BaseScreen):
                                      text_color=C["white"])
         self._lbl_val.place(relx=0.5, rely=0.52, anchor="center")
 
+        if TOUCH_MODE:
+            # Botoes - e + para ajuste de valor via toque (ficam dentro do card)
+            ctk.CTkButton(
+                card, text="−", font=ctk.CTkFont(size=26, weight="bold"),
+                width=54, height=54, corner_radius=27,
+                fg_color=C["bg_card_light"], hover_color=C["border"],
+                text_color=C["white"], border_width=1, border_color=C["border"],
+                command=lambda: self._adjust(-1),
+            ).place(relx=0.14, rely=0.52, anchor="center")
+            ctk.CTkButton(
+                card, text="+", font=ctk.CTkFont(size=26, weight="bold"),
+                width=54, height=54, corner_radius=27,
+                fg_color=C["green"], hover_color=C["green_dark"],
+                text_color=C["black"],
+                command=lambda: self._adjust(+1),
+            ).place(relx=0.86, rely=0.52, anchor="center")
+
         # Seta para baixo (visual)
         ctk.CTkLabel(card, text="\u2193", font=ctk.CTkFont(size=22),
                      text_color=C["muted"]).place(relx=0.5, rely=0.72, anchor="center")
@@ -407,12 +452,38 @@ class ScreenT2(BaseScreen):
             d.pack(side="left", padx=4)
             self._dots.append(d)
 
-        # Footer com dicas de controle
-        foot = ctk.CTkFrame(self, fg_color=C["bg_card_light"], corner_radius=8, height=40)
-        foot.pack(side="bottom", fill="x", padx=30, pady=15)
-        foot.pack_propagate(False)
-        self._lbl_hints = ctk.CTkLabel(foot, font=ctk.CTkFont(size=12), text_color=C["muted"])
-        self._lbl_hints.place(relx=0.5, rely=0.5, anchor="center")
+        # Footer: dicas de teclado (HID) ou barra de botoes de navegacao (touch)
+        if TOUCH_MODE:
+            foot = ctk.CTkFrame(self, fg_color=C["transparent"], height=55)
+            foot.pack(side="bottom", fill="x", padx=30, pady=10)
+            foot.pack_propagate(False)
+            foot.grid_columnconfigure(0, weight=1)
+            foot.grid_columnconfigure(1, weight=1)
+            ctk.CTkButton(
+                foot, text="<- VOLTAR",
+                font=ctk.CTkFont(size=14, weight="bold"),
+                corner_radius=12, height=46,
+                fg_color=C["btn_off"], hover_color=C["btn_off"],
+                text_color=C["text2"], border_width=1,
+                border_color=C["btn_off_border"],
+                command=self._touch_back,
+            ).grid(row=0, column=0, padx=(0, 6), sticky="ew")
+            self._btn_next = ctk.CTkButton(
+                foot, text="PROXIMO ->",
+                font=ctk.CTkFont(size=14, weight="bold"),
+                corner_radius=12, height=46,
+                fg_color=C["green"], hover_color=C["green_dark"],
+                text_color=C["black"],
+                command=self._touch_next,
+            )
+            self._btn_next.grid(row=0, column=1, padx=(6, 0), sticky="ew")
+            self._lbl_hints = None  # nao usado no modo touch
+        else:
+            foot = ctk.CTkFrame(self, fg_color=C["bg_card_light"], corner_radius=8, height=40)
+            foot.pack(side="bottom", fill="x", padx=30, pady=15)
+            foot.pack_propagate(False)
+            self._lbl_hints = ctk.CTkLabel(foot, font=ctk.CTkFont(size=12), text_color=C["muted"])
+            self._lbl_hints.place(relx=0.5, rely=0.5, anchor="center")
 
     def _refresh(self):
         """Atualiza todos os elementos visuais com base no passo atual."""
@@ -425,10 +496,16 @@ class ScreenT2(BaseScreen):
         for i, d in enumerate(self._dots):
             d.configure(fg_color=C["green"] if i == self.step else C["muted"])
 
-        hints = ("↑ ↓  Ajustar      ENTER  Próximo      ←  Voltar"
-                 if self.step == 0
-                 else "↑ ↓  Ajustar      ENTER  Confirmar    ←  Voltar")
-        self._lbl_hints.configure(text=hints)
+        if TOUCH_MODE:
+            # Atualiza texto do botao de avanco conforme o passo atual
+            if hasattr(self, "_btn_next") and self._btn_next:
+                last = (self.step == len(self.FIELDS) - 1)
+                self._btn_next.configure(text="CONFIRMAR ->" if last else "PROXIMO ->")
+        else:
+            hints = ("↑ ↓  Ajustar      ENTER  Próximo      ←  Voltar"
+                     if self.step == 0
+                     else "↑ ↓  Ajustar      ENTER  Confirmar    ←  Voltar")
+            self._lbl_hints.configure(text=hints)
 
     def _adjust(self, delta):
         """Incrementa ou decrementa o valor do campo atual dentro dos limites."""
@@ -440,6 +517,22 @@ class ScreenT2(BaseScreen):
         # Flash verde para dar feedback visual imediato ao usuario
         self._lbl_val.configure(text_color=C["green"])
         self.safe_after(200, lambda: self._lbl_val.configure(text_color=C["white"]))
+
+    def _touch_back(self):
+        """Botao VOLTAR em modo touch: retrocede o passo ou volta ao splash."""
+        if self.step > 0:
+            self.step -= 1
+            self._refresh()
+        else:
+            self.app.show_screen("t1")
+
+    def _touch_next(self):
+        """Botao PROXIMO/CONFIRMAR em modo touch: avanca o passo ou vai para T3."""
+        if self.step < len(self.FIELDS) - 1:
+            self.step += 1
+            self._refresh()
+        else:
+            self.app.show_screen("t3")
 
     def handle_key(self, event):
         k = event.keysym
@@ -479,6 +572,8 @@ class ScreenT3(BaseScreen):
             self.session.camera.start()
         self._build()
         self._style_buttons()
+        if TOUCH_MODE:
+            self._setup_touch()
         if _CV2_OK:
             self._update_feed()
 
@@ -547,11 +642,31 @@ class ScreenT3(BaseScreen):
                                     corner_radius=10, height=46)
         self._btn_i.grid(row=0, column=1, padx=(8, 0), sticky="ew")
 
-        ctk.CTkLabel(self, text="← →  Selecionar      ENTER  Confirmar",
-                     font=ctk.CTkFont(size=11), text_color=C["muted"]).pack(pady=(0, 10))
+        if not TOUCH_MODE:
+            ctk.CTkLabel(self, text="← →  Selecionar      ENTER  Confirmar",
+                         font=ctk.CTkFont(size=11), text_color=C["muted"]).pack(pady=(0, 10))
+        else:
+            ctk.CTkLabel(self, text="Toque em INICIAR para começar o exame",
+                         font=ctk.CTkFont(size=11), text_color=C["muted"]).pack(pady=(0, 10))
+
+    def _setup_touch(self):
+        """Liga comandos de clique nos botões (TOUCH_MODE = True)."""
+        self._btn_v.configure(
+            command=lambda: self.app.show_screen("t2"),
+            fg_color=C["btn_off"], hover_color=C["border"],
+            text_color=C["text2"], border_width=1,
+            border_color=C["btn_off_border"],
+        )
+        self._btn_i.configure(
+            command=self.app.start_exam,
+            fg_color=C["green"], hover_color=C["green_dark"],
+            text_color=C["black"], border_width=0,
+        )
 
     def _style_buttons(self):
         """Aplica estilos de ativo/inativo nos botoes conforme a selecao atual."""
+        if TOUCH_MODE:
+            return
         if self.sel == 1:  # INICIAR ativo
             self._btn_i.configure(fg_color=C["green"], hover_color=C["green_dark"],
                                   text_color=C["black"], border_width=0)
@@ -981,6 +1096,8 @@ class ScreenT5(BaseScreen):
         self.sel = 0  # 0 = NOVO EXAME, 1 = VER GALERIA
         self._build()
         self._style_buttons()
+        if TOUCH_MODE:
+            self._setup_touch()
 
     def _build(self):
         box = ctk.CTkFrame(self, fg_color=C["transparent"])
@@ -1033,11 +1150,34 @@ class ScreenT5(BaseScreen):
         )
         self._btn_galeria.pack(side="left", padx=(10, 0))
 
-        ctk.CTkLabel(box, text="\u2190 \u2192  Selecionar      [ ENTER ]  Confirmar",
-                     font=ctk.CTkFont(size=11), text_color=C["muted"]).pack()
+        if not TOUCH_MODE:
+            ctk.CTkLabel(box, text="\u2190 \u2192  Selecionar      [ ENTER ]  Confirmar",
+                         font=ctk.CTkFont(size=11), text_color=C["muted"]).pack()
+        else:
+            ctk.CTkLabel(box, text="Toque na opção desejada",
+                         font=ctk.CTkFont(size=11), text_color=C["muted"]).pack()
+
+    def _setup_touch(self):
+        """Liga comandos de clique nos botões (TOUCH_MODE = True)."""
+        self._btn_novo.configure(
+            command=self.app.new_exam,
+            fg_color=C["green"], hover_color=C["green_dark"],
+            text_color=C["black"], border_width=0,
+        )
+        self._btn_galeria.configure(
+            command=self._touch_go_gallery,
+            fg_color=C["purple"], hover_color=C["purple_light"],
+            text_color=C["white"], border_width=0,
+        )
+
+    def _touch_go_gallery(self):
+        self.app._gallery_origin = "t5"
+        self.app.show_screen("galeria")
 
     def _style_buttons(self):
         """Atualiza o estilo dos botoes conforme a selecao atual."""
+        if TOUCH_MODE:
+            return
         if self.sel == 0:  # NOVO EXAME ativo
             self._btn_novo.configure(
                 fg_color=C["green"], hover_color=C["green_dark"],
@@ -1060,6 +1200,8 @@ class ScreenT5(BaseScreen):
             )
 
     def handle_key(self, event):
+        if TOUCH_MODE:
+            return
         k = event.keysym
         if k == "Left":
             self.sel = 0
@@ -1113,6 +1255,16 @@ class ScreenGaleria(BaseScreen):
         )
         self._lbl_title.place(relx=0.5, rely=0.5, anchor="center")
 
+        if TOUCH_MODE:
+            self._btn_back = ctk.CTkButton(
+                self._hdr, text="← VOLTAR", width=85, height=32,
+                font=ctk.CTkFont(size=12, weight="bold"),
+                fg_color=C["btn_off"], hover_color=C["border"],
+                text_color=C["white"],
+                command=self._on_touch_back,
+            )
+            self._btn_back.place(relx=0.03, rely=0.5, anchor="w")
+
         self._content = ctk.CTkFrame(self, fg_color=C["transparent"])
         self._content.pack(fill="both", expand=True)
 
@@ -1126,6 +1278,16 @@ class ScreenGaleria(BaseScreen):
             font=ctk.CTkFont(size=11), text_color=C["muted"],
         )
         self._lbl_hints.place(relx=0.5, rely=0.5, anchor="center")
+
+    def _on_touch_back(self):
+        """Ação do botão VOLTAR do header (TOUCH_MODE = True)."""
+        if self.level == 1:
+            origin = getattr(self.app, "_gallery_origin", "t1")
+            self.app.show_screen(origin)
+        elif self.level == 2:
+            self._show_level1()
+        elif self.level == 3:
+            self._show_level2()
 
     def _clear_content(self):
         """Remove todos os widgets da area de conteudo."""
@@ -1141,9 +1303,12 @@ class ScreenGaleria(BaseScreen):
     def _show_level1(self):
         self.level = 1
         self._lbl_title.configure(text="GALERIA DE EXAMES")
-        self._lbl_hints.configure(
-            text="\u2191 \u2193  Navegar      ENTER  Abrir      \u2190  Voltar"
-        )
+        if TOUCH_MODE:
+            self._lbl_hints.configure(text="Toque em um exame para abrir")
+        else:
+            self._lbl_hints.configure(
+                text="\u2191 \u2193  Navegar      ENTER  Abrir      \u2190  Voltar"
+            )
         self._clear_content()
 
         if not self.exams:
@@ -1189,14 +1354,30 @@ class ScreenGaleria(BaseScreen):
                 font=ctk.CTkFont(size=12), text_color=C["muted"],
             ).place(relx=0.06, rely=0.72, anchor="w")
 
+            if TOUCH_MODE:
+                def _make_exam_click(idx=i, ex=exam):
+                    def _h(e=None):
+                        self.exam_idx = idx
+                        self._cur_exam = ex
+                        self.image_idx = 0
+                        self._show_level2()
+                    return _h
+                h = _make_exam_click(i, exam)
+                row.bind("<Button-1>", h)
+                for child in row.winfo_children():
+                    child.bind("<Button-1>", h)
+
     # --- nivel 2: lista de analises ---
 
     def _show_level2(self):
         self.level = 2
         self._lbl_title.configure(text=self._cur_exam["name"])
-        self._lbl_hints.configure(
-            text="\u2191 \u2193  Navegar      ENTER  Visualizar      \u2190  Voltar"
-        )
+        if TOUCH_MODE:
+            self._lbl_hints.configure(text="Toque em uma análise para visualizar")
+        else:
+            self._lbl_hints.configure(
+                text="\u2191 \u2193  Navegar      ENTER  Visualizar      \u2190  Voltar"
+            )
         self._clear_content()
 
         images  = self._cur_exam["images"]
@@ -1249,6 +1430,17 @@ class ScreenGaleria(BaseScreen):
                 text_color=C["amber"] if is_sel else C["muted"],
             ).place(relx=0.97, rely=0.5, anchor="e")
 
+            if TOUCH_MODE:
+                def _make_img_click(idx=i):
+                    def _h(e=None):
+                        self.image_idx = idx
+                        self._show_level3()
+                    return _h
+                h = _make_img_click(i)
+                row.bind("<Button-1>", h)
+                for child in row.winfo_children():
+                    child.bind("<Button-1>", h)
+
     # --- nivel 3: visualizacao da imagem ---
 
     def _show_level3(self):
@@ -1262,9 +1454,12 @@ class ScreenGaleria(BaseScreen):
         self._lbl_title.configure(
             text=f"{img_label}   [{self.image_idx + 1} / {len(images)}]"
         )
-        self._lbl_hints.configure(
-            text="\u2191 \u2193  Navegar imagens      \u2190  Voltar para lista"
-        )
+        if TOUCH_MODE:
+            self._lbl_hints.configure(text="")
+        else:
+            self._lbl_hints.configure(
+                text="\u2191 \u2193  Navegar imagens      \u2190  Voltar para lista"
+            )
         self._clear_content()
 
         # Deteccoes em % na linha de topo
@@ -1290,8 +1485,49 @@ class ScreenGaleria(BaseScreen):
         self._img_lbl = tk.Label(img_frame, bg=C["bg_card"], bd=0, highlightthickness=0)
         self._img_lbl.pack(fill="both", expand=True)
 
+        # Controles de toque para navegar entre imagens (Nivel 3)
+        if TOUCH_MODE:
+            nav = ctk.CTkFrame(self._content, fg_color=C["transparent"], height=40)
+            nav.pack(fill="x", padx=16, pady=(0, 4))
+            nav.pack_propagate(False)
+            nav.grid_columnconfigure(0, weight=1)
+            nav.grid_columnconfigure(1, weight=1)
+
+            btn_prev = ctk.CTkButton(
+                nav, text="◀ ANTERIOR", height=36,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                fg_color=C["btn_off"] if self.image_idx > 0 else C["border"],
+                text_color=C["white"] if self.image_idx > 0 else C["muted"],
+                state="normal" if self.image_idx > 0 else "disabled",
+                command=self._touch_prev_img,
+            )
+            btn_prev.grid(row=0, column=0, padx=(0, 8), sticky="ew")
+
+            btn_next = ctk.CTkButton(
+                nav, text="PRÓXIMO ▶", height=36,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                fg_color=C["btn_off"] if self.image_idx < len(images) - 1 else C["border"],
+                text_color=C["white"] if self.image_idx < len(images) - 1 else C["muted"],
+                state="normal" if self.image_idx < len(images) - 1 else "disabled",
+                command=self._touch_next_img,
+            )
+            btn_next.grid(row=0, column=1, padx=(8, 0), sticky="ew")
+
         # Carrega a imagem apos o widget ser desenhado pelo tkinter
         self.safe_after(60, lambda: self._render_image(img_path))
+
+    def _touch_prev_img(self):
+        """Navega para a imagem anterior (TOUCH_MODE = True)."""
+        if self.image_idx > 0:
+            self.image_idx -= 1
+            self._show_level3()
+
+    def _touch_next_img(self):
+        """Navega para a próxima imagem (TOUCH_MODE = True)."""
+        images = self._cur_exam["images"]
+        if self.image_idx < len(images) - 1:
+            self.image_idx += 1
+            self._show_level3()
 
     def _render_image(self, img_path):
         """Carrega e exibe a imagem anotada, ajustando ao espaco disponivel."""
@@ -1318,6 +1554,8 @@ class ScreenGaleria(BaseScreen):
     # --- teclado ---
 
     def handle_key(self, event):
+        if TOUCH_MODE:
+            return
         k = event.keysym
 
         if self.level == 1:
