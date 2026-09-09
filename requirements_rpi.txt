@@ -1,23 +1,40 @@
 # ================================================
-# requirements_rpi.txt — Visual Detect (Raspberry Pi 4)
-# Instalar APOS o requirements_pc.txt principal:
-#   pip install -r requirements_pc.txt
+# requirements_rpi.txt — VisualDetect (Raspberry Pi 4)
+# Arquivo AUTOSSUFICIENTE — instale APENAS este arquivo no Raspberry Pi.
+#
+# ATENÇÃO: PyTorch deve ser instalado ANTES deste arquivo,
+# usando o índice CPU-only (veja o passo abaixo ou o install_rpi.sh):
+#
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 #   pip install -r requirements_rpi.txt
+#
+# Última atualização: 2026-09-09
 # ================================================
 
-# Camera Raspberry Pi (modulo CSI)
-# Nota: picamera2 e instalada preferencialmente via apt no Raspberry Pi OS:
-#   sudo apt install python3-picamera2
-# A linha abaixo serve como fallback via pip (pode nao funcionar em todos os sistemas):
-# picamera2==0.3.31
+# -------------------------------------------------------------------
+# Detecção — modelo YOLO (app/backend.py)
+# -------------------------------------------------------------------
+ultralytics==8.4.126
 
-# Comunicacao serial (ESP32 via USB)
-pyserial==3.5
+# -------------------------------------------------------------------
+# Visão computacional — câmera e feed (app/backend.py)
+# -------------------------------------------------------------------
+opencv-python==5.0.0.93
 
-# ================================================
-# NOTA: As bibliotecas abaixo sao instaladas via
-# apt-get no Raspberry Pi OS, NAO via pip:
-#   sudo apt install python3-gi python3-cairo python3-picamera2
-# ================================================
-# PyGObject (via apt: python3-gi)
-# pycairo    (via apt: python3-cairo)
+# -------------------------------------------------------------------
+# Processamento de imagem e dados (app/backend.py + app/ui.py)
+# -------------------------------------------------------------------
+numpy==2.4.6
+Pillow==12.3.0
+
+# -------------------------------------------------------------------
+# Interface gráfica (app/main.py + app/ui.py)
+# -------------------------------------------------------------------
+customtkinter==6.0.0
+
+# -------------------------------------------------------------------
+# NOTA: As bibliotecas abaixo são instaladas via apt-get no
+# Raspberry Pi OS, NÃO via pip:
+#   sudo apt install python3-tk python3-dev
+#   sudo apt install libgl1 libglib2.0-0 libsm6 libxext6 libxrender-dev
+# -------------------------------------------------------------------

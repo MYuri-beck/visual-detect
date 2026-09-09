@@ -10,8 +10,9 @@
 #   1. Atualizar o sistema
 #   2. Instalar dependências do sistema via apt
 #   3. Criar o ambiente virtual Python
-#   4. Instalar as bibliotecas Python
-#   5. Registrar o serviço de autostart (systemd)
+#   4. Instalar PyTorch CPU-only (versão leve, sem CUDA)
+#   5. Instalar as bibliotecas Python via requirements_rpi.txt
+#   6. Registrar o serviço de autostart (systemd)
 # =============================================================================
 
 set -e  # Para imediatamente se qualquer comando falhar
@@ -35,13 +36,14 @@ echo ""
 # =============================================================================
 # PASSO 1 — Atualizar o sistema
 # =============================================================================
-echo -e "${YELLOW}[1/5] Atualizando lista de pacotes...${NC}"
+echo -e "${YELLOW}[1/6] Atualizando lista de pacotes...${NC}"
 sudo apt-get update -y
+echo -e "${GREEN}  ✓ Lista de pacotes atualizada.${NC}"
 
 # =============================================================================
 # PASSO 2 — Instalar dependências do sistema
 # =============================================================================
-echo -e "${YELLOW}[2/5] Instalando dependências do sistema...${NC}"
+echo -e "${YELLOW}[2/6] Instalando dependências do sistema...${NC}"
 sudo apt-get install -y \
     python3-pip \
     python3-venv \
@@ -63,7 +65,7 @@ echo -e "${GREEN}  ✓ Dependências do sistema instaladas.${NC}"
 # =============================================================================
 # PASSO 3 — Criar ambiente virtual Python
 # =============================================================================
-echo -e "${YELLOW}[3/5] Criando ambiente virtual Python...${NC}"
+echo -e "${YELLOW}[3/6] Criando ambiente virtual Python...${NC}"
 cd "$PROJECT_DIR"
 
 if [ -d ".venv" ]; then
@@ -75,51 +77,60 @@ fi
 
 # Ativa o ambiente virtual
 source .venv/bin/activate
+echo -e "${GREEN}  ✓ Ambiente virtual ativado.${NC}"
 
 # =============================================================================
-# PASSO 4 — Instalar bibliotecas Python
+# PASSO 4 — Instalar PyTorch CPU-only
 # =============================================================================
-echo -e "${YELLOW}[4/5] Instalando bibliotecas Python...${NC}"
+echo -e "${YELLOW}[4/6] Instalando PyTorch CPU-only (versão leve para Raspberry Pi)...${NC}"
+echo "  (sem isso o pip baixaria a versão com CUDA ~2 GB, que não funciona no Raspberry Pi)"
 
 # Atualiza o pip primeiro
 pip install --upgrade pip
 
-# Instala PyTorch CPU-only ANTES do requirements_pc.txt
-# (sem isso o pip baixa a versão com CUDA ~2 GB, que não funciona no Raspberry Pi)
-echo "  Instalando PyTorch CPU-only (versão leve para Raspberry Pi)..."
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+echo -e "${GREEN}  ✓ PyTorch CPU-only instalado.${NC}"
 
-# Instala o restante das dependências principais
-echo "  Instalando requirements_pc.txt..."
-pip install -r requirements_pc.txt
+# =============================================================================
+# PASSO 5 — Instalar bibliotecas Python via requirements_rpi.txt
+# =============================================================================
+echo -e "${YELLOW}[5/6] Instalando bibliotecas Python (requirements_rpi.txt)...${NC}"
 
-# Instala dependências específicas do Raspberry Pi
-echo "  Instalando requirements_rpi.txt..."
-pip install -r requirements_rpi.txt
+REQUIREMENTS="$PROJECT_DIR/requirements_rpi.txt"
 
+if [ ! -f "$REQUIREMENTS" ]; then
+    echo -e "${RED}  ERRO: Arquivo não encontrado: $REQUIREMENTS${NC}"
+    exit 1
+fi
+
+pip install -r "$REQUIREMENTS"
 echo -e "${GREEN}  ✓ Bibliotecas Python instaladas.${NC}"
 
 # =============================================================================
-# PASSO 5 — Registrar serviço de autostart
+# PASSO 6 — Registrar serviço de autostart
 # =============================================================================
-echo -e "${YELLOW}[5/5] Configurando autostart (systemd)...${NC}"
+echo -e "${YELLOW}[6/6] Configurando autostart (systemd)...${NC}"
 
-# Substitui o caminho do projeto no arquivo de serviço
 SERVICE_TEMPLATE="$PROJECT_DIR/docs/dev/visualdetect.service"
 SERVICE_DEST="/etc/systemd/system/visualdetect.service"
 SERVICE_TEMP="/tmp/visualdetect.service"
 
-# Substitui o placeholder pelo caminho real do projeto
-sed "s|/home/pi/VisualDetect|$PROJECT_DIR|g" "$SERVICE_TEMPLATE" > "$SERVICE_TEMP"
+if [ ! -f "$SERVICE_TEMPLATE" ]; then
+    echo -e "${RED}  ERRO: Arquivo de serviço não encontrado: $SERVICE_TEMPLATE${NC}"
+    echo -e "${YELLOW}  Pulando configuração de autostart. Configure manualmente depois.${NC}"
+else
+    # Substitui o placeholder pelo caminho real do projeto
+    sed "s|/home/pi/VisualDetect|$PROJECT_DIR|g" "$SERVICE_TEMPLATE" > "$SERVICE_TEMP"
 
-# Copia o serviço para o systemd
-sudo cp "$SERVICE_TEMP" "$SERVICE_DEST"
+    # Copia o serviço para o systemd
+    sudo cp "$SERVICE_TEMP" "$SERVICE_DEST"
 
-# Recarrega e habilita o serviço
-sudo systemctl daemon-reload
-sudo systemctl enable visualdetect.service
+    # Recarrega e habilita o serviço
+    sudo systemctl daemon-reload
+    sudo systemctl enable visualdetect.service
 
-echo -e "${GREEN}  ✓ Serviço visualdetect registrado e habilitado.${NC}"
+    echo -e "${GREEN}  ✓ Serviço visualdetect registrado e habilitado.${NC}"
+fi
 
 # =============================================================================
 # CONCLUSÃO

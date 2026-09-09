@@ -50,8 +50,6 @@ SCREEN_HEIGHT = 480
 # TOUCH_MODE: True  → navegação por toque/clique (display touchscreen)
 #             False → navegação por teclado/HID Pico 2W (padrão de produto)
 # PARA ALTERAR: troque False por True abaixo.
-# Esta configuração é exclusiva para o desenvolvedor — o usuário final
-# não tem acesso a ela no produto acabado.
 TOUCH_MODE = True
 
 # Paleta de cores da aplicacao (roxo escuro + verde + ambar)

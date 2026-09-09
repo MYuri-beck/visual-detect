@@ -234,11 +234,14 @@ source .venv/bin/activate
 # 4. Atualizar o pip
 pip install --upgrade pip
 
-# 5. Instalar dependências Python
-pip install -r requirements_pc.txt
+# 5. Instalar PyTorch CPU-only (ANTES do requirements_rpi.txt)
+# Sem este passo, o pip baixaria a versão com CUDA (~2 GB), que não funciona no Raspberry Pi
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# 6. Instalar todas as dependências do app (arquivo autossuficiente)
 pip install -r requirements_rpi.txt
 
-# 6. Testar se funciona
+# 7. Testar se funciona
 python app/main.py --fullscreen
 ```
 
@@ -710,8 +713,8 @@ VisualDetect/
 │   └── esp32_hid_controller/      ← Legado (ESP32-S2/S3)
 │       └── esp32_hid_controller.ino
 │
-├── requirements_pc.txt     ← dependências Python para PC e Raspberry Pi
-└── requirements_rpi.txt    ← dependências extras do Raspberry Pi
+├── requirements_pc.txt     ← dependências Python para desenvolvimento no PC
+└── requirements_rpi.txt    ← dependências Python para o Raspberry Pi (autossuficiente)
 ```
 
 ---
