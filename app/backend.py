@@ -69,7 +69,7 @@ class CameraManager:
 
     # --- controle ---
 
-    def start(self, index=1):
+    def start(self, index=0):
         """Abre a câmera e inicia a thread de captura contínua."""
         # Guard: se já estiver rodando, não abre uma segunda instância
         if self._running and self._cap is not None and self._cap.isOpened():
