@@ -1,7 +1,7 @@
 # Manual Técnico — VisualDetect
 
 > **Projeto:** VisualDetect — Equipamento de Triagem do Reflexo Ocular
-> **Versão:** 1.0 · Setembro 2026
+> **Versão:** 1.1 · Setembro 2026
 > **Autores:** Yuri Mendes | Andrei Krug
 > **Instituição:** SENAI / NUDEP
 
@@ -23,6 +23,7 @@
 12. [Dependências e Requisitos](#12-dependências-e-requisitos)
 13. [Configurações e Parâmetros Ajustáveis](#13-configurações-e-parâmetros-ajustáveis)
 14. [Navegação por Teclado / HID](#14-navegação-por-teclado--hid)
+15. [Modo Touchscreen (TOUCH_MODE)](#15-modo-touchscreen-touch_mode)
 
 ---
 
@@ -34,15 +35,22 @@ O **VisualDetect** é um sistema embarcado de triagem do reflexo ocular desenvol
 - **Firmware Arduino** no Raspberry Pi Pico 2W, que emula um teclado HID USB para controle físico via botões
 - **Modelo YOLO** treinado para detecção de anomalias oculares via visão computacional
 
+O equipamento suporta **dois modos de operação** configuráveis via código:
+
+| Modo | Constante | Descrição |
+|------|-----------|-----------|
+| **Touchscreen** | `TOUCH_MODE = True` | Navegação por toque/clique (padrão atual) |
+| **HID / Teclado** | `TOUCH_MODE = False` | Navegação exclusiva via 5 botões físicos (Pico 2W) |
+
 ### Stack tecnológico
 
 | Camada | Tecnologia | Versão mínima |
 |--------|------------|---------------|
 | Linguagem | Python | 3.11 |
-| Interface gráfica | CustomTkinter (`ctk`) | 5.x |
+| Interface gráfica | CustomTkinter (`ctk`) | 5.x (PC) / 6.0.0 (RPi) |
 | Visão computacional | Ultralytics YOLO | 8.x |
-| Captura de imagem | OpenCV (`cv2`) | 4.x |
-| Exibição de imagens | Pillow (PIL) | 9.x |
+| Captura de imagem | OpenCV (`cv2`) | 4.x (PC) / 5.0.0 (RPi) |
+| Exibição de imagens | Pillow (PIL) | 9.x (PC) / 12.x (RPi) |
 | Firmware controller | Arduino + arduino-pico | RP2350 |
 
 ---
@@ -138,7 +146,7 @@ sequenceDiagram
     participant UI as VisualDetectUI
 
     M->>Cam: CameraManager()
-    M->>Cam: camera.start() — thread inicia
+    M->>Cam: camera.start() — thread inicia (index=0)
     M->>Ana: VisionAnalyzer(model_path)
     M->>Ses: CaptureSession(camera, analyzer, ...)
     M->>UI: VisualDetectUI(backend_session=session)
@@ -155,6 +163,13 @@ python main.py              # janela 800×480 (desenvolvimento)
 python main.py --fullscreen # tela cheia (Raspberry Pi em produção)
 python main.py -f           # equivalente ao acima
 ```
+
+### Atalhos de teclado globais (VisualDetectUI)
+
+| Tecla | Ação |
+|-------|------|
+| `F11` | Alterna fullscreen / janela |
+| `ESC` | Sai do fullscreen; ou fecha a aplicação |
 
 ---
 
@@ -177,10 +192,12 @@ Gerencia a webcam em **thread separada** para não bloquear a UI.
 
 | Método | Retorno | Descrição |
 |--------|---------|-----------|
-| `start(index=1)` | `bool` | Abre câmera e inicia thread. `0` = webcam integrada, `1` = USB externa |
+| `start(index=0)` | `bool` | Abre câmera e inicia thread. `0` = webcam padrão (USB ou integrada) |
 | `stop()` | — | Para a thread e libera o hardware |
 | `get_frame()` | `ndarray \| None` | Retorna cópia do frame BGR mais recente (thread-safe) |
 | `available` | `bool` | `True` se câmera está aberta e operacional |
+
+> **Nota v1.1:** O índice padrão foi alterado de `1` para `0`. Para câmera USB secundária, passe `index=1` explicitamente.
 
 #### Detalhes internos
 
@@ -188,6 +205,7 @@ Gerencia a webcam em **thread separada** para não bloquear a UI.
 - Buffer interno protegido por `threading.Lock()`
 - Sempre retorna uma **cópia** do frame (nunca referência direta)
 - Frequência de captura: ~30 FPS (`time.sleep(0.033)`)
+- **Parada automática na T4b** para liberar CPU do Raspberry Pi durante análise YOLO
 
 ```mermaid
 graph LR
@@ -271,6 +289,25 @@ session.start_exam(
 )
 ```
 
+#### Callbacks de análise registrados por T4b
+
+Além dos callbacks de `start_exam`, a tela T4b registra callbacks diretamente na sessão:
+
+```python
+session._ui_analyze_progress_cb = callable(idx, total, fname)
+# Chamado a cada imagem analisada pelo YOLO
+
+session._ui_analyze_finish_cb = callable(captured_images)
+# Chamado ao finalizar toda a análise
+```
+
+#### Atributo `last_analyzed_folder`
+
+```python
+session.last_analyzed_folder  # str — caminho absoluto da pasta do último exame
+# Exibido pela tela T5 como confirmação do exame salvo
+```
+
 #### Fluxo interno de `_capture_loop`
 
 ```mermaid
@@ -309,14 +346,27 @@ exams = session.get_exam_gallery()
 
 ## 6. Módulo `ui.py` — Interface Gráfica
 
-**Linhas:** 1461 | Construído com **CustomTkinter** sobre Tkinter puro.
+**Linhas:** 1697 | Construído com **CustomTkinter** sobre Tkinter puro.
 
-### 6.1 Hierarquia de Telas
+### 6.1 Modo de Operação — `TOUCH_MODE`
+
+```python
+# Topo de ui.py — linha ~53
+TOUCH_MODE = True   # padrão atual: touchscreen
+# TOUCH_MODE = False  # para operar via botões HID/teclado
+```
+
+| `TOUCH_MODE` | Impacto nas telas |
+|---|---|
+| `True` | Botões clicáveis em todas as telas; galeria com toque em cada item; botões ANTERIOR/PRÓXIMO no nível 3 |
+| `False` | Nenhum botão tem `command`; toda navegação é via `handle_key()` |
+
+### 6.2 Hierarquia de Telas
 
 ```mermaid
 graph TD
     L[ScreenLoading] -- modelo pronto --> T0[ScreenT0\nCréditos / Institucional]
-    T0 -- ENTER --> T1[ScreenT1\nSplash / Menu Principal]
+    T0 -- ENTER / botão --> T1[ScreenT1\nSplash / Menu Principal]
     T1 -- INICIAR --> T2[ScreenT2\nConfiguração Wizard]
     T1 -- GALERIA --> G[ScreenGaleria]
     T2 -- passo 2 OK --> T3[ScreenT3\nRevisão + Feed Câmera]
@@ -324,12 +374,14 @@ graph TD
     T3 -- INICIAR --> T4[ScreenT4\nCapturando...]
     T4 -- captura concluída --> T4b[ScreenT4b\nAnalisando YOLO...]
     T4b -- análise concluída --> T5[ScreenT5\nExame Concluído]
-    T5 -- NOVO EXAME --> T2
+    T5 -- NOVO EXAME --> T1
     T5 -- GALERIA --> G
-    G -- LEFT --> T1
+    G -- LEFT / botão VOLTAR --> T1 ou T5
 ```
 
-### 6.2 Paleta de Cores
+> **Nota v1.1:** "NOVO EXAME" em T5 retorna para **T1** (menu principal), não para T2.
+
+### 6.3 Paleta de Cores
 
 ```python
 SCREEN_WIDTH  = 800
@@ -341,17 +393,24 @@ SCREEN_HEIGHT = 480
 | `bg` | `#0d0b1a` | Fundo principal |
 | `bg_card` | `#1a1533` | Fundo de cards e painéis |
 | `bg_card_light` | `#252040` | Cards secundários |
+| `bg_field` | `#1e1940` | Fundo de campo de entrada (**novo v1.1**) |
 | `border` | `#2d2755` | Bordas inativas |
 | `border_active` | `#00e676` | Bordas de campo ativo |
 | `green` | `#00e676` | Ações primárias, confirmações |
-| `amber` | `#ffc107` | Avisos, progresso |
-| `red` | `#ff1744` | Erros, cancelamento |
+| `green_dark` | `#00c853` | Hover do verde primário (**novo v1.1**) |
+| `amber` | `#ffc107` | Avisos, progresso de análise |
+| `red` | `#ff1744` | Erros, indicador de captura ativa |
 | `purple` | `#7c4dff` | Botões secundários |
+| `purple_light` | `#b388ff` | Hover do roxo (**novo v1.1**) |
 | `white` | `#ffffff` | Texto principal |
 | `text2` | `#9e9ab8` | Texto secundário |
 | `muted` | `#5c5880` | Texto de dica / inativo |
+| `btn_off` | `#2a2550` | Fundo de botão inativo (**novo v1.1**) |
+| `btn_off_border` | `#3d3670` | Borda de botão inativo (**novo v1.1**) |
+| `black` | `#000000` | Texto sobre fundo verde (**novo v1.1**) |
+| `transparent` | `"transparent"` | Frames sem cor de fundo (**novo v1.1**) |
 
-### 6.3 Detalhamento por Tela
+### 6.4 Detalhamento por Tela
 
 Cada tela é subclasse de `BaseScreen(ctk.CTkFrame)` e acessa o backend via `self.session`.
 
@@ -374,6 +433,7 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 | | |
 |--|--|
 | **Tecla de saída** | `ENTER` |
+| **Toque (TOUCH_MODE)** | Botão "CONTINUAR" |
 | **Próxima tela** | T1 |
 
 ---
@@ -385,7 +445,8 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 | | |
 |--|--|
 | **Seleção** | `sel = 0` (INICIAR) ou `sel = 1` (GALERIA) |
-| **Navegação** | `↑/↓` muda seleção; `ENTER` confirma |
+| **Navegação (HID)** | `↑/↓` muda seleção; `ENTER` confirma |
+| **Toque (TOUCH_MODE)** | Clique direto nos botões |
 | **Botão ativo** | Verde (INICIAR) ou Roxo (GALERIA) |
 
 ---
@@ -402,7 +463,8 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 
 | | |
 |--|--|
-| **Navegação** | `↑/↓` ajusta valor; `ENTER` avança passo; `←` volta passo ou tela |
+| **Navegação (HID)** | `↑/↓` ajusta valor; `ENTER` avança passo; `←` volta passo ou tela |
+| **Toque (TOUCH_MODE)** | Botões `−` / `+` dentro do card; botões "VOLTAR" / "PRÓXIMO" no footer |
 | **Destino dos valores** | Salvos diretamente em `session.image_number` e `session.total_time` |
 
 ---
@@ -413,8 +475,10 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 
 | | |
 |--|--|
-| **Navegação** | `←/→` alterna entre VOLTAR/INICIAR; `ENTER` confirma |
+| **Navegação (HID)** | `←/→` alterna entre VOLTAR/INICIAR; `ENTER` confirma |
+| **Toque (TOUCH_MODE)** | Botões "← VOLTAR" e "INICIAR →" clicáveis diretamente |
 | **Feed ao vivo** | Câmera exibida em painel lateral — permite verificar posicionamento |
+| **Câmera** | Reiniciada automaticamente se estava parada (ex.: voltando de T4b) |
 
 ---
 
@@ -429,8 +493,12 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 | | |
 |--|--|
 | **Botões** | **Todos bloqueados** durante captura |
-| **Progresso** | Barra atualizada a cada foto via `on_progress_callback(captured, total)` |
-| **Saída** | Automática ao completar todas as capturas |
+| **Feed ao vivo** | Câmera exibida na coluna direita durante todo o exame |
+| **Barra de capturas** | Atualizada via `on_progress_callback(captured, total)` |
+| **Barra de tempo** | Atualizada a cada 50 ms via `_tick()` local |
+| **Countdown** | Label "Próxima captura em: X.X s" atualizado localmente |
+| **Indicador** | Ponto vermelho piscante (`*`) indica captura ativa |
+| **Saída** | Automática ao completar todas as capturas → T4b |
 
 ---
 
@@ -443,8 +511,11 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 | | |
 |--|--|
 | **Botões** | **Todos bloqueados** durante análise |
+| **Câmera** | **Parada** nesta tela para liberar CPU do Raspberry Pi |
+| **Spinner** | Animação `| / — \` em âmbar; vira `v` verde ao concluir |
 | **Callbacks** | Registra `_ui_analyze_progress_cb` e `_ui_analyze_finish_cb` na sessão |
-| **Saída** | Automática ao receber `on_finish_callback` |
+| **Label do arquivo** | Atualizado a cada imagem: "Analisando: Analise NN..." |
+| **Saída** | Automática 1200 ms após `on_finish_callback` → T5 |
 
 ---
 
@@ -455,7 +526,10 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 | | |
 |--|--|
 | **Seleção** | `NOVO EXAME` ou `VER GALERIA` |
-| **Navegação** | `←/→` muda seleção; `ENTER` confirma |
+| **Navegação (HID)** | `←/→` muda seleção; `ENTER` confirma |
+| **Toque (TOUCH_MODE)** | Botões clicáveis diretamente |
+| **Pasta do exame** | Nome de `session.last_analyzed_folder` exibido na tela |
+| **NOVO EXAME** | Limpa `captured_images` e vai para **T1** (menu principal) |
 
 ---
 
@@ -469,11 +543,13 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 
 ![Galeria - Seleção de Captura](../interface/T8%20-%20tela%20galeria%20sele%C3%A7%C3%A3o%20de%20captura.jpeg)
 
-| Nível | Conteúdo | Navegação |
-|-------|----------|-----------|
-| 1 | Pastas `Exame DD-MM-YY - HH-MM` | `↑/↓` navega; `ENTER` abre; `←` volta para T1 |
-| 2 | Imagens `Analise NN.jpg` | `↑/↓` navega; `ENTER` abre; `←` volta para nível 1 |
-| 3 | Imagem anotada + detecções YOLO | `←` volta para nível 2 |
+| Nível | Conteúdo | Navegação HID | Navegação Touch |
+|-------|----------|---------------|-----------------|
+| 1 | Pastas `Exame DD-MM-YY - HH-MM` | `↑/↓` navega; `ENTER` abre; `←` volta para T1/T5 | Toque no item; botão "← VOLTAR" no header |
+| 2 | Imagens `Analise NN.jpg` com preview de detecção | `↑/↓` navega; `ENTER` abre; `←` volta nível 1 | Toque no item; botão "← VOLTAR" no header |
+| 3 | Imagem anotada + detecções YOLO | `↑/↓` navega entre imagens; `←` volta nível 2 | Botões "◀ ANTERIOR" / "PRÓXIMO ▶"; botão "← VOLTAR" no header |
+
+> **Novo v1.1:** Botão "← VOLTAR" permanente no header (TOUCH_MODE) e navegação entre imagens no nível 3 (`↑/↓` HID ou botões touch).
 
 ---
 
@@ -483,17 +559,17 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 flowchart TD
     A([Equipamento ligado]) --> B[ScreenLoading\ncarrega modelo YOLO]
     B --> C[T0 — Créditos]
-    C -- ENTER --> D[T1 — Menu Principal]
+    C -- ENTER / CONTINUAR --> D[T1 — Menu Principal]
     D -- INICIAR --> E["T2 — Configuração\nnúmero de capturas + tempo"]
     D -- GALERIA --> K[Galeria]
     E -- confirma --> F[T3 — Revisão + feed câmera]
     F -- VOLTAR --> E
-    F -- INICIAR --> G["T4 — Capturando\nbarra de progresso automática"]
-    G -- todas as fotos tiradas --> H["T4b — Analisando\nYOLO processa cada imagem"]
-    H -- análise concluída --> I["T5 — Exame Concluído\nresultados disponíveis"]
-    I -- NOVO EXAME --> E
+    F -- INICIAR --> G["T4 — Capturando\nbarra de progresso + feed ao vivo"]
+    G -- todas as fotos tiradas --> H["T4b — Analisando\ncâmera parada; YOLO processa"]
+    H -- análise concluída --> I["T5 — Exame Concluído\nnome da pasta exibido"]
+    I -- NOVO EXAME --> D
     I -- GALERIA --> K
-    K -- LEFT --> D
+    K -- VOLTAR --> D ou I
 ```
 
 ---
@@ -513,12 +589,13 @@ sequenceDiagram
     YT->>YT: YOLO(model_path)
     YT->>UI: after(0, on_ready)
 
-    Note over UI,YT: Fase: Captura
+    Note over UI,YT: Fase: Captura (T4)
     UI->>CT: get_frame() com Lock
     UI->>UI: cv2.imwrite(fname)
     UI->>UI: after(0, on_progress)
 
-    Note over UI,YT: Fase: Análise YOLO
+    Note over UI,YT: Fase: Análise YOLO (T4b)
+    CT->>CT: camera.stop() — câmera parada
     YT->>YT: YOLO.predict() x N imagens
     YT->>UI: after(0, on_analyze_progress)
     YT->>UI: after(0, on_finish)
@@ -684,11 +761,13 @@ graph TD
 
 O Pico 2W é **completamente transparente** para o SO: o Raspberry Pi 4 o vê como teclado USB genérico — sem drivers adicionais, sem `udev`, sem permissões especiais.
 
+> **Nota:** Com `TOUCH_MODE = True`, o controlador HID ainda funciona normalmente em telas que não retornam `early` no `handle_key()`. Em `TOUCH_MODE = True`, as teclas são ignoradas em T5 e Galeria por retorno antecipado.
+
 ---
 
 ## 12. Dependências e Requisitos
 
-### Software
+### Software (PC / desenvolvimento)
 
 ```bash
 # requirements_pc.txt
@@ -706,14 +785,35 @@ source .venv/bin/activate     # Linux/Mac
 pip install -r requirements_pc.txt
 ```
 
+### Software (Raspberry Pi — versões fixas)
+
+```bash
+# requirements_rpi.txt — versões testadas e fixas para o Raspberry Pi 4
+ultralytics==8.4.126
+opencv-python==5.0.0.93
+numpy==2.4.6
+Pillow==12.3.0
+customtkinter==6.0.0
+```
+
+```bash
+# Pré-requisito: PyTorch CPU-only (instalar ANTES do requirements_rpi.txt)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements_rpi.txt
+
+# Dependências do sistema (via apt-get):
+sudo apt install python3-tk python3-dev
+sudo apt install libgl1 libglib2.0-0 libsm6 libxext6 libxrender-dev
+```
+
 ### Hardware mínimo
 
 | Componente | Especificação |
 |------------|---------------|
 | Computador | Raspberry Pi 4 (2 GB RAM mín.) ou PC x86 |
-| Câmera | Webcam USB (compatível com OpenCV, índice `1`) |
-| Controlador | Raspberry Pi Pico 2W com firmware gravado |
-| Tela | Display HDMI 800×480 mínimo |
+| Câmera | Webcam USB (compatível com OpenCV, índice `0` padrão) |
+| Controlador | Raspberry Pi Pico 2W com firmware gravado (opcional em TOUCH_MODE) |
+| Tela | Display HDMI 800×480 mínimo (touch recomendado para TOUCH_MODE) |
 | Modelo YOLO | `app/models/best.pt` (não incluso no repositório) |
 
 ---
@@ -734,6 +834,7 @@ pip install -r requirements_pc.txt
 |-----------|--------|-----------|
 | `SCREEN_WIDTH` | `800` | Largura da janela em pixels |
 | `SCREEN_HEIGHT` | `480` | Altura da janela em pixels |
+| `TOUCH_MODE` | `True` | `True` = touchscreen; `False` = HID/teclado |
 | `C["green"]` | `#00e676` | Cor primária — altere para rebranding |
 | `C["purple"]` | `#7c4dff` | Cor secundária |
 
@@ -758,7 +859,9 @@ pip install -r requirements_pc.txt
 
 ## 14. Navegação por Teclado / HID
 
-O `VisualDetectUI` captura eventos de teclado globalmente e despacha para a tela ativa via `handle_key(event)`. Cada tela sobrescreve apenas as teclas relevantes; demais são silenciosamente ignoradas.
+> Aplicável quando `TOUCH_MODE = False`. Com `TOUCH_MODE = True`, as teclas ainda são processadas em T0, T1, T2, T3 e nos níveis 1–3 da Galeria (em modo HID).
+
+O `VisualDetectUI` captura eventos de teclado globalmente e despacha para a tela ativa via `handle_key(event)`.
 
 ### Mapeamento completo por tela
 
@@ -771,10 +874,40 @@ O `VisualDetectUI` captura eventos de teclado globalmente e despacha para a tela
 | **T4 Capturando** | 🔒 | 🔒 | 🔒 | 🔒 | 🔒 |
 | **T4b Analisando** | 🔒 | 🔒 | 🔒 | 🔒 | 🔒 |
 | **T5 Concluído** | Seleciona NOVO EXAME | Seleciona GALERIA | — | — | Confirma seleção |
-| **Galeria** | Volta nível anterior | — | Item acima | Item abaixo | Abre item selecionado |
+| **Galeria Nível 1** | Volta para T1/T5 | — | Item acima | Item abaixo | Abre exame |
+| **Galeria Nível 2** | Volta nível 1 | — | Item acima | Item abaixo | Abre imagem |
+| **Galeria Nível 3** | Volta nível 2 | — | Imagem anterior | Próxima imagem | — |
 
-> O teclado físico convencional e o controlador Pico 2W HID usam exatamente as mesmas teclas — o sistema não distingue a origem do input.
+> O teclado físico e o controlador Pico 2W HID usam exatamente as mesmas teclas — o sistema não distingue a origem do input.
 
 ---
 
-*Documentação gerada em Setembro de 2026. Para atualizações, edite este arquivo e faça commit no repositório `MYuri-beck/visual-detect`.*
+## 15. Modo Touchscreen (TOUCH_MODE)
+
+O `TOUCH_MODE` foi introduzido na versão 1.1 para suportar displays touchscreen sem o controlador HID físico.
+
+### O que muda com `TOUCH_MODE = True`
+
+| Tela | Mudança |
+|------|---------|
+| **T0** | Exibe botão "CONTINUAR" em vez do texto de hint de teclado |
+| **T1** | Botões INICIAR e GALERIA são clicáveis diretamente |
+| **T2** | Botões `−` / `+` dentro do card; footer com "VOLTAR" / "PRÓXIMO" |
+| **T3** | Botões "← VOLTAR" e "INICIAR →" clicáveis; hint de toque |
+| **T5** | Botões "NOVO EXAME" e "VER GALERIA" clicáveis; hint de toque |
+| **Galeria** | Botão "← VOLTAR" permanente no header; toque em itens nos níveis 1 e 2; botões "◀ ANTERIOR" / "PRÓXIMO ▶" no nível 3 |
+
+### Como alternar modos
+
+Edite a constante no topo de `app/ui.py`:
+
+```python
+TOUCH_MODE = True   # touchscreen (padrão atual)
+TOUCH_MODE = False  # HID/teclado físico
+```
+
+Não é necessário reiniciar o ambiente — basta reiniciar a aplicação.
+
+---
+
+*Documentação gerada em Setembro de 2026 · Versão 1.1. Para atualizações, edite este arquivo e faça commit no repositório `MYuri-beck/visual-detect`.*
