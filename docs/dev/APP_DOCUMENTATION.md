@@ -2,7 +2,7 @@
 
 > **Versão:** 1.0  
 > **Projeto:** VisualDetect — Equipamento de Triagem do Reflexo Ocular  
-> **Autores:** Yuri Mendes | Andrei Krug  
+> **Autores:** Yuri Mendes  
 
 ---
 

@@ -1,4 +1,4 @@
-﻿# VisualDetect — Guia do Usuário
+# VisualDetect — Guia do Usuário
 
 **Equipamento de Triagem do Reflexo Ocular**
 SENAI / NUDEP — 2026
@@ -211,7 +211,7 @@ A Galeria permite visualizar exames anteriores organizados por data:
 
 Anote a mensagem que apareceu na tela e acione o suporte técnico:
 
-**Yuri Mendes / Andrei Krug — SENAI NUDEP**
+**Yuri Mendes — SENAI NUDEP**
 
 ---
 

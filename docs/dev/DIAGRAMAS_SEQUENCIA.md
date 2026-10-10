@@ -2,7 +2,7 @@
 
 > **Projeto:** VisualDetect — Equipamento de Triagem do Reflexo Ocular
 > **Versão:** 1.0 · Setembro 2026
-> **Autores:** Yuri Mendes | Andrei Krug
+> **Autores:** Yuri Mendes
 
 Os diagramas estão divididos em **5 partes** cobrindo todos os fluxos do sistema:
 

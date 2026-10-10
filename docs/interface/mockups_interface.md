@@ -30,7 +30,7 @@ Display alvo: DSI (ribbon) do Raspberry Pi 4 — ~800×480px, sem toque, navega�
 - Logo SENAI / NUDEP (a inserir no código)
 - Centro de Formação Profissional SENAI – Plínio Gilberto Kröeff
 - Curso Técnico em Desenvolvimento de Sistemas
-- Autores: Yuri Mendes | Andrei Krug
+- Autores: Yuri Mendes
 - `ENTER` → avança para T1
 
 ---

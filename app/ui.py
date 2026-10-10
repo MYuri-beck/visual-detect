@@ -217,7 +217,7 @@ class ScreenT0(BaseScreen):
 
         ctk.CTkLabel(box, text="Autores:",
                      font=ctk.CTkFont(size=14), text_color=C["green"]).pack(pady=(0, 4))
-        ctk.CTkLabel(box, text="Yuri Mendes  |  Andrei Krug",
+        ctk.CTkLabel(box, text="Yuri Mendes",
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=C["white"]).pack(pady=(0, 30))
 

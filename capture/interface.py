@@ -18,7 +18,7 @@ Uso:
   python interface.py              # janela 800×480
   python interface.py --fullscreen # tela cheia (Raspberry Pi)
 
-Autores: Yuri Mendes | Andrei Krug
+Autores: Yuri Mendes
 """
 
 import sys
@@ -254,7 +254,7 @@ class ScreenT0(BaseScreen):
             font=ctk.CTkFont(size=14), text_color=C["green"],
         ).pack(pady=(0, 4))
         ctk.CTkLabel(
-            box, text="Yuri Mendes  |  Andrei Krug",
+            box, text="Yuri Mendes",
             font=ctk.CTkFont(size=16, weight="bold"), text_color=C["white"],
         ).pack(pady=(0, 30))
 

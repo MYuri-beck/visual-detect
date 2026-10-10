@@ -1,8 +1,8 @@
 # Manual Técnico — VisualDetect
 
 > **Projeto:** VisualDetect — Equipamento de Triagem do Reflexo Ocular
-> **Versão:** 1.1 · Setembro 2026
-> **Autores:** Yuri Mendes | Andrei Krug
+> **Versão:** 1.2 · Outubro 2026
+> **Autores:** Yuri Mendes
 > **Instituição:** SENAI / NUDEP
 
 ---
@@ -114,9 +114,33 @@ app/
 
 firmware/
 ├── README.md
-└── pico2w_hid_controller/
-    ├── pico2w_hid_controller.ino        # Firmware ativo (Pico 2W → HID USB)
-    └── README.md
+├── pico2w_hid_controller/               # Firmware ATIVO
+│   ├── pico2w_hid_controller.ino        # Pico 2W → HID USB (RP2350)
+│   └── README.md
+└── esp32_hid_controller/               # Legado — ESP32-S2/S3 (não utilizado)
+    └── esp32_hid_controller.ino
+
+docs/
+├── dev/
+│   ├── MANUAL_TECNICO.md               # Este arquivo
+│   ├── INSTALL_RASPBERRY.md            # Guia de instalação no Raspberry Pi
+│   ├── INSTALL_PC.md                   # Guia para desenvolvimento no Windows
+│   ├── install_rpi.sh                  # Script de instalação automática (RPi)
+│   ├── visualdetect.service            # Serviço systemd para autostart
+│   └── CADERNO_CAMPO_*.md              # Diários de campo das sessões
+└── user_guide/
+    └── GUIA_DO_USUARIO.md              # Guia do operador / médico
+
+# Pastas de desenvolvimento (não fazem parte do deploy no Raspberry Pi)
+training/                               # Scripts e configs de treinamento YOLO
+data/                                   # Datasets e anotações
+analysis/                               # Análises exploratórias e notebooks
+scripts/                                # Utilitários auxiliares
+runs/                                   # Resultados de treinamento YOLO (auto-gerado)
+capture/                                # Capturas avulsas de desenvolvimento
+
+requirements_pc.txt                     # Dependências Python para desenvolvimento (PC)
+requirements_rpi.txt                    # Dependências Python fixas para Raspberry Pi
 ```
 
 ---
@@ -124,6 +148,8 @@ firmware/
 ## 4. Módulo `main.py` — Ponto de Entrada
 
 **Linhas:** 95 | **Responsabilidade:** configuração, composição, inicialização.
+
+> Para o guia completo de instalação e deploy no Raspberry Pi, consulte [`docs/dev/INSTALL_RASPBERRY.md`](INSTALL_RASPBERRY.md).
 
 ### Parâmetros configuráveis
 
@@ -348,6 +374,8 @@ exams = session.get_exam_gallery()
 
 **Linhas:** 1697 | Construído com **CustomTkinter** sobre Tkinter puro.
 
+> **Nota:** A docstring do topo de `ui.py` menciona "ESP32 HID" — isso é um resquício histórico. O controlador físico ativo é o **Raspberry Pi Pico 2W** (firmware `pico2w_hid_controller.ino`).
+
 ### 6.1 Modo de Operação — `TOUCH_MODE`
 
 ```python
@@ -381,7 +409,20 @@ graph TD
 
 > **Nota v1.1:** "NOVO EXAME" em T5 retorna para **T1** (menu principal), não para T2.
 
-### 6.3 Paleta de Cores
+### 6.3 Classe Base — `BaseScreen`
+
+Todas as telas herdam de `BaseScreen(ctk.CTkFrame)`, que fornece:
+
+| Membro | Tipo | Descrição |
+|--------|------|-----------|
+| `self.app` | `VisualDetectUI` | Referência à janela principal |
+| `self.session` | `CaptureSession` | Backend injetado pelo `VisualDetectUI` |
+| `safe_after(ms, cb)` | método | Registra `after()` com cancelamento automático ao trocar de tela |
+| `cleanup()` | método | Cancela todos os `after()` pendentes — chamado por `show_screen()` |
+| `handle_key(event)` | método | Sobrescrito por cada tela para tratar input de teclado/HID |
+| `_load_ctk_image(path, max_w, max_h)` | estático | Carrega PNG como `CTkImage` com fallback silencioso |
+
+### 6.4 Paleta de Cores
 
 ```python
 SCREEN_WIDTH  = 800
@@ -393,24 +434,24 @@ SCREEN_HEIGHT = 480
 | `bg` | `#0d0b1a` | Fundo principal |
 | `bg_card` | `#1a1533` | Fundo de cards e painéis |
 | `bg_card_light` | `#252040` | Cards secundários |
-| `bg_field` | `#1e1940` | Fundo de campo de entrada (**novo v1.1**) |
+| `bg_field` | `#1e1940` | Fundo de campo de entrada |
 | `border` | `#2d2755` | Bordas inativas |
 | `border_active` | `#00e676` | Bordas de campo ativo |
 | `green` | `#00e676` | Ações primárias, confirmações |
-| `green_dark` | `#00c853` | Hover do verde primário (**novo v1.1**) |
+| `green_dark` | `#00c853` | Hover do verde primário |
 | `amber` | `#ffc107` | Avisos, progresso de análise |
 | `red` | `#ff1744` | Erros, indicador de captura ativa |
 | `purple` | `#7c4dff` | Botões secundários |
-| `purple_light` | `#b388ff` | Hover do roxo (**novo v1.1**) |
+| `purple_light` | `#b388ff` | Hover do roxo |
 | `white` | `#ffffff` | Texto principal |
 | `text2` | `#9e9ab8` | Texto secundário |
 | `muted` | `#5c5880` | Texto de dica / inativo |
-| `btn_off` | `#2a2550` | Fundo de botão inativo (**novo v1.1**) |
-| `btn_off_border` | `#3d3670` | Borda de botão inativo (**novo v1.1**) |
-| `black` | `#000000` | Texto sobre fundo verde (**novo v1.1**) |
-| `transparent` | `"transparent"` | Frames sem cor de fundo (**novo v1.1**) |
+| `btn_off` | `#2a2550` | Fundo de botão inativo |
+| `btn_off_border` | `#3d3670` | Borda de botão inativo |
+| `black` | `#000000` | Texto sobre fundo verde |
+| `transparent` | `"transparent"` | Frames sem cor de fundo |
 
-### 6.4 Detalhamento por Tela
+### 6.5 Detalhamento por Tela
 
 Cada tela é subclasse de `BaseScreen(ctk.CTkFrame)` e acessa o backend via `self.session`.
 
@@ -530,6 +571,8 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 | **Toque (TOUCH_MODE)** | Botões clicáveis diretamente |
 | **Pasta do exame** | Nome de `session.last_analyzed_folder` exibido na tela |
 | **NOVO EXAME** | Limpa `captured_images` e vai para **T1** (menu principal) |
+
+> **Nota v1.2 — HID em TOUCH_MODE:** O `handle_key()` de T5 faz `return` imediatamente se `TOUCH_MODE = True`, tornando todas as teclas inativas nessa tela quando em modo touch. O mesmo se aplica à Galeria.
 
 ---
 
@@ -761,7 +804,9 @@ graph TD
 
 O Pico 2W é **completamente transparente** para o SO: o Raspberry Pi 4 o vê como teclado USB genérico — sem drivers adicionais, sem `udev`, sem permissões especiais.
 
-> **Nota:** Com `TOUCH_MODE = True`, o controlador HID ainda funciona normalmente em telas que não retornam `early` no `handle_key()`. Em `TOUCH_MODE = True`, as teclas são ignoradas em T5 e Galeria por retorno antecipado.
+> **Nota:** Com `TOUCH_MODE = True`, o controlador HID ainda funciona em T0, T1, T2 e T3 (que não fazem `return` antecipado no `handle_key()`). Em T5 e Galeria, `handle_key()` faz `return` imediatamente quando `TOUCH_MODE = True`, ignorando todo input de teclado nessas telas.
+
+> **Deploy:** Para instruções completas de instalação no Raspberry Pi, configuração do autostart (systemd) e resolução de problemas, consulte [`docs/dev/INSTALL_RASPBERRY.md`](INSTALL_RASPBERRY.md).
 
 ---
 
@@ -789,6 +834,7 @@ pip install -r requirements_pc.txt
 
 ```bash
 # requirements_rpi.txt — versões testadas e fixas para o Raspberry Pi 4
+# Última atualização: 2026-09-09
 ultralytics==8.4.126
 opencv-python==5.0.0.93
 numpy==2.4.6
@@ -910,4 +956,19 @@ Não é necessário reiniciar o ambiente — basta reiniciar a aplicação.
 
 ---
 
-*Documentação gerada em Setembro de 2026 · Versão 1.1. Para atualizações, edite este arquivo e faça commit no repositório `MYuri-beck/visual-detect`.*
+## 16. Deploy e Autostart (Raspberry Pi)
+
+Para o guia completo de instalação, deploy e configuração do autostart via `systemd`, consulte:
+
+📄 [`docs/dev/INSTALL_RASPBERRY.md`](INSTALL_RASPBERRY.md)
+
+O documento cobre:
+- Clonagem do repositório e configuração de branch `raspberry-pi`
+- Instalação via script automático (`install_rpi.sh`) ou passo a passo
+- Configuração do autostart com `visualdetect.service`
+- Transferência do modelo `.pt` para o dispositivo
+- Comandos do dia a dia e resolução de problemas
+
+---
+
+*Documentação atualizada em Outubro de 2026 · Versão 1.2. Para atualizações, edite este arquivo e faça commit no repositório `MYuri-beck/visual-detect`.*

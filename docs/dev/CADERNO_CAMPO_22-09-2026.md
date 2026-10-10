@@ -1,7 +1,7 @@
 # Caderno de Campo - VisualDetect
 
 **Data:** 22 de setembro de 2026  
-**Responsáveis:** Yuri Mendes | Andrei Krug  
+**Responsáveis:** Yuri Mendes  
 **Instituição:** SENAI / NUDEP - Curso Técnico em Desenvolvimento de Sistemas  
 **Sessão:** Documentação Técnica & Guia do Usuário
 
