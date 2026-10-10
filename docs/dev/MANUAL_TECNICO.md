@@ -393,18 +393,19 @@ TOUCH_MODE = True   # padrão atual: touchscreen
 
 ```mermaid
 graph TD
-    L[ScreenLoading] -- modelo pronto --> T0[ScreenT0\nCréditos / Institucional]
-    T0 -- ENTER / botão --> T1[ScreenT1\nSplash / Menu Principal]
-    T1 -- INICIAR --> T2[ScreenT2\nConfiguração Wizard]
+    L[ScreenLoading] -- modelo pronto --> T0["ScreenT0\nCréditos / Institucional"]
+    T0 -- ENTER / botão --> T1["ScreenT1\nSplash / Menu Principal"]
+    T1 -- INICIAR --> T2["ScreenT2\nConfiguração Wizard"]
     T1 -- GALERIA --> G[ScreenGaleria]
-    T2 -- passo 2 OK --> T3[ScreenT3\nRevisão + Feed Câmera]
+    T2 -- passo 2 OK --> T3["ScreenT3\nRevisão + Feed Câmera"]
     T3 -- VOLTAR --> T2
-    T3 -- INICIAR --> T4[ScreenT4\nCapturando...]
-    T4 -- captura concluída --> T4b[ScreenT4b\nAnalisando YOLO...]
-    T4b -- análise concluída --> T5[ScreenT5\nExame Concluído]
+    T3 -- INICIAR --> T4["ScreenT4\nCapturando..."]
+    T4 -- captura concluída --> T4b["ScreenT4b\nAnalisando YOLO..."]
+    T4b -- análise concluída --> T5["ScreenT5\nExame Concluído"]
     T5 -- NOVO EXAME --> T1
     T5 -- GALERIA --> G
-    G -- LEFT / botão VOLTAR --> T1 ou T5
+    G -- LEFT / botão VOLTAR --> T1
+    G -- LEFT / botão VOLTAR --> T5
 ```
 
 > **Nota v1.1:** "NOVO EXAME" em T5 retorna para **T1** (menu principal), não para T2.
@@ -600,19 +601,20 @@ Exibida na inicialização enquanto o modelo YOLO carrega em background.
 
 ```mermaid
 flowchart TD
-    A([Equipamento ligado]) --> B[ScreenLoading\ncarrega modelo YOLO]
-    B --> C[T0 — Créditos]
-    C -- ENTER / CONTINUAR --> D[T1 — Menu Principal]
+    A([Equipamento ligado]) --> B["ScreenLoading\ncarrega modelo YOLO"]
+    B --> C["T0 — Créditos"]
+    C -- ENTER / CONTINUAR --> D["T1 — Menu Principal"]
     D -- INICIAR --> E["T2 — Configuração\nnúmero de capturas + tempo"]
     D -- GALERIA --> K[Galeria]
-    E -- confirma --> F[T3 — Revisão + feed câmera]
+    E -- confirma --> F["T3 — Revisão + feed câmera"]
     F -- VOLTAR --> E
     F -- INICIAR --> G["T4 — Capturando\nbarra de progresso + feed ao vivo"]
     G -- todas as fotos tiradas --> H["T4b — Analisando\ncâmera parada; YOLO processa"]
     H -- análise concluída --> I["T5 — Exame Concluído\nnome da pasta exibido"]
     I -- NOVO EXAME --> D
     I -- GALERIA --> K
-    K -- VOLTAR --> D ou I
+    K -- VOLTAR --> D
+    K -- VOLTAR --> I
 ```
 
 ---
